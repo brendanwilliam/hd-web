@@ -10,7 +10,7 @@ Handscheck is the public, privacy-safe companion service for Input Activity OBS 
 
 ## Deploy to Vercel and Neon
 
-Create a Neon database, add its pooled connection URL as `DATABASE_URL` in Vercel, and configure `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `APP_URL=https://handscheck.vercel.app`, and a random `CRON_SECRET`. Deploy this `web/handscheck` directory as the Vercel project root, then run `npx prisma migrate deploy` against production.
+Create a Neon database, add its pooled connection URL as `DATABASE_URL` in Vercel, and configure `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `APP_URL=https://handscheck.vercel.app`, and a random `CRON_SECRET`. Deploy this repository root as the Vercel project root, then run `npx prisma migrate deploy` against production.
 
 Set the GitHub OAuth callback URL to `https://handscheck.vercel.app/api/auth/github/callback`. If a custom domain replaces the Vercel hostname, update both `APP_URL` and that callback URL. Vercel automatically authenticates the configured daily cron using `CRON_SECRET`.
 
