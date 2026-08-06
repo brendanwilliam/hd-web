@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  githubId     String        @unique
+  githubLogin  String        @unique
+  createdAt    DateTime      @default(now())
+  profiles     RiotProfile[]
+  deviceGrants DeviceGrant[]
+  uploadTokens UploadToken[]
+}
+
+model RiotProfile {
+  id                String   @id @default(cuid())
+  normalizedRiotId  String   @unique
+  riotId            String
+  ownerId           String
+  owner             Account  @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  reports           Report[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model DeviceGrant {
+  id        String   @id @default(cuid())
+  codeHash  String   @unique
+  userCode  String   @unique
+  accountId String?
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  approvedAt DateTime?
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model UploadToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+}
+
+model Report {
+  id            String      @id
+  profileId     String
+  profile       RiotProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  completedAt   DateTime
+  gameId        String?
+  champion      String?
+  outcome       String?
+  schemaVersion Int
+  payload       Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([profileId, completedAt])
+  @@index([gameId])
+  @@index([champion])
+}
