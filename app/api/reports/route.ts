@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { digest } from "@/lib/crypto";
 import { jsonError, requestJson } from "@/lib/http";
 import { normalizeRiotId, reportSchema, safeReport } from "@/lib/report";
+import { collisionSlug, profilePath, profileSlug, reportPath } from "@/lib/profile";
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
@@ -17,12 +18,16 @@ export async function POST(request: Request) {
     // and use the receipt time rather than blocking every later queued report.
     const payload = safeReport({ ...parsed.data, completed_at: parsed.data.completed_at || new Date().toISOString() });
     const riotIdNormalized = normalizeRiotId(payload.player);
-    const profile = await db.profile.upsert({ where: { riotIdNormalized }, create: { riotId: payload.player, riotIdNormalized, accountId: token.accountId }, update: {} });
+    let profile = await db.profile.findUnique({ where: { riotIdNormalized } });
+    if (!profile) {
+      const baseSlug = profileSlug(payload.player);
+      const slug = await db.profile.findUnique({ where: { slug: baseSlug } }) ? collisionSlug(payload.player) : baseSlug;
+      profile = await db.profile.create({ data: { riotId: payload.player, riotIdNormalized, slug, accountId: token.accountId } });
+    }
     if (profile.accountId !== token.accountId) return jsonError("Riot ID belongs to another account", 409);
     const reportJson = payload as Prisma.InputJsonValue;
     await db.report.upsert({ where: { id: payload.id }, create: { id: payload.id, profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson }, update: { profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson } });
     await db.apiToken.update({ where: { id: token.id }, data: { lastUsedAt: new Date() } });
-    const profilePath = `/${encodeURIComponent(profile.riotId)}`;
-    return NextResponse.json({ id: payload.id, profile: profilePath, url: `${profilePath}/reports/${encodeURIComponent(payload.id)}` });
+    return NextResponse.json({ id: payload.id, profile: profilePath(profile.slug), url: reportPath(profile.slug, payload.id) });
   } catch (error) { return jsonError(error instanceof Error && error.message === "payload_too_large" ? "payload too large" : "invalid JSON"); }
 }
