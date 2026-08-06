@@ -3,6 +3,13 @@ export type RiotRegion = (typeof regions)[number];
 export const isRiotRegion = (value: string): value is RiotRegion => regions.includes(value as RiotRegion);
 export const riotRegions = regions;
 const defaultPlatform: Record<RiotRegion, string> = { americas: "NA1", europe: "EUW1", asia: "KR", sea: "SG2" };
+export function riotRegionForGameId(gameId: string): RiotRegion {
+  const platform = gameId.split("_", 1)[0]?.toUpperCase();
+  if (["NA1", "BR1", "LA1", "LA2", "OC1"].includes(platform)) return "americas";
+  if (["EUW1", "EUN1", "TR1", "RU"].includes(platform)) return "europe";
+  if (["KR", "JP1"].includes(platform)) return "asia";
+  return "sea";
+}
 
 type Data = Record<string, unknown>;
 const data = (value: unknown): Data => typeof value === "object" && value !== null ? value as Data : {};
@@ -19,6 +26,30 @@ export type ManualReport = {
   samples: Data[]; events: Data[]; abilities: Data[]; items: Data[];
   participants: { riotId: string; champion: string }[];
 };
+
+export function hydrateReportPayload(payload: Data, report: ManualReport): Data {
+  const enrichment = data(payload.enrichment);
+  return {
+    ...payload,
+    completed_at: report.completedAt,
+    champion: report.champion,
+    role: report.role,
+    outcome: report.outcome,
+    game_id: report.gameId,
+    game_mode: report.gameMode,
+    map: report.map,
+    duration_seconds: report.durationSeconds,
+    team_gold: report.teamGold,
+    enemy_team_gold: report.enemyTeamGold,
+    team_kills: report.teamKills,
+    enemy_team_kills: report.enemyTeamKills,
+    samples: report.samples.map(sample => ({ ...sample, estimated_gold: number(sample.estimatedGold) })),
+    events: report.events,
+    abilities: report.abilities,
+    item_events: report.items,
+    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true }
+  };
+}
 
 export function makeManualReport(match: unknown, timeline: unknown, gameId: string, requestedPlayer = ""): ManualReport {
   const info = data(data(match).info), participants = list(info.participants);
