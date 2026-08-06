@@ -4,9 +4,31 @@ Handscheck is the public, privacy-safe companion service for Input Activity OBS 
 
 ## Local development
 
-1. Copy `.env.example` to `.env` and fill in a Neon Postgres `DATABASE_URL`, GitHub OAuth credentials, and a long random `SESSION_SECRET`.
-2. In this directory, run `npm install`, `npx prisma migrate dev`, and `npm run dev`.
-3. Create a GitHub OAuth app with callback URL `http://localhost:3000/api/auth/github/callback`.
+1. Start the development-only Postgres database:
+
+   ```sh
+   docker compose up -d db
+   ```
+
+   It listens on `127.0.0.1:5433` and retains its data in the named
+   `handscheck_postgres` Docker volume.
+
+2. Copy `.env.example` to `.env`. The example `DATABASE_URL` already targets
+   the local Compose database. Fill in GitHub OAuth credentials, a long random
+   `SESSION_SECRET`, and `CRON_SECRET`.
+3. Create a GitHub OAuth app with callback URL
+   `http://localhost:3000/api/auth/github/callback`.
+4. Install dependencies, apply the committed migrations, and run the app:
+
+   ```sh
+   npm install
+   npm run db:migrate
+   npm run dev
+   ```
+
+   Visit <http://127.0.0.1:3000>. To stop the local database while preserving
+   its data, run `docker compose down`. Use `docker compose down --volumes`
+   only when you intentionally want to remove local development data.
 
 ## Deploy to Vercel and Neon
 

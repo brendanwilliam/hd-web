@@ -11,7 +11,7 @@ export async function sessionAccountId() {
 }
 export async function setSession(accountId: string) {
   if (!process.env.SESSION_SECRET) throw new Error("SESSION_SECRET is required");
-  const token = await new SignJWT({}).setSubject(accountId).setIssuedAt().setExpirationTime("30d").sign(key());
+  const token = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(accountId).setIssuedAt().setExpirationTime("30d").sign(key());
   (await cookies()).set(cookieName, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
 }
 export async function clearSession() { (await cookies()).delete(cookieName); }
