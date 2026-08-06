@@ -1,13 +1,14 @@
 import { z } from "zod";
 
 const object = z.record(z.unknown());
+const maxTelemetrySamples = 10_000;
 export const reportSchema = z.object({
   schema_version: z.union([z.literal(4), z.literal(5)]), id: z.string().uuid(), completed_at: z.string().datetime(),
   player: z.string().min(3).max(100), champion: z.string().max(100).optional(),
   game_mode: z.string().max(100).optional(), duration_seconds: z.number().int().nonnegative().max(86_400).optional(),
-  samples: z.array(object).max(2_000).default([]), timeline_samples: z.array(object).max(2_000).default([]),
-  events: z.array(object).max(2_000).default([]), timeline_events: z.array(object).max(2_000).default([]),
-  input_samples: z.array(object).max(2_000).default([]), hexbins: z.array(object).max(2_000).default([]),
+  samples: z.array(object).max(maxTelemetrySamples).default([]), timeline_samples: z.array(object).max(maxTelemetrySamples).default([]),
+  events: z.array(object).max(maxTelemetrySamples).default([]), timeline_events: z.array(object).max(maxTelemetrySamples).default([]),
+  input_samples: z.array(object).max(maxTelemetrySamples).default([]), hexbins: z.array(object).max(maxTelemetrySamples).default([]),
   chapters: z.array(object).max(500).default([]), assets: object.optional(), enrichment: object.optional()
 }).passthrough();
 export type ReportPayload = z.infer<typeof reportSchema>;
