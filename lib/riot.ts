@@ -18,6 +18,7 @@ const number = (value: unknown) => typeof value === "number" ? value : 0;
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const playerName = (player: Data) => `${text(player.riotIdGameName)}#${text(player.riotIdTagline)}`;
 const mapName = (id: number) => ({ 11: "Summoner's Rift", 12: "Howling Abyss", 21: "Nexus Blitz", 30: "Arena" })[id] ?? "Unknown map";
+const sameRiotId = (left: string, right: string) => left.normalize("NFKC").trim().toLocaleLowerCase() === right.normalize("NFKC").trim().toLocaleLowerCase();
 
 export type ManualReport = {
   player: string; champion: string; role: string; outcome: string; gameId: string; gameMode: string; map: string;
@@ -53,7 +54,7 @@ export function hydrateReportPayload(payload: Data, report: ManualReport): Data 
 
 export function makeManualReport(match: unknown, timeline: unknown, gameId: string, requestedPlayer = ""): ManualReport {
   const info = data(data(match).info), participants = list(info.participants);
-  const selected = participants.find(player => playerName(player).toLocaleLowerCase() === requestedPlayer.toLocaleLowerCase()) ?? participants[0];
+  const selected = requestedPlayer ? participants.find(player => sameRiotId(playerName(player), requestedPlayer)) : participants[0];
   if (!selected) throw new Error("Riot returned a match with no participants.");
   const participantId = number(selected.participantId), teamId = number(selected.teamId);
   const samples: Data[] = [], events: Data[] = [], abilities: Data[] = [], items: Data[] = [];
@@ -87,4 +88,65 @@ export async function loadManualReport(region: RiotRegion, gameId: string, playe
   const fetchRiot = async (url: string) => { const response = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" }); if (!response.ok) throw new Error(`Riot API request failed (HTTP ${response.status}).`); return response.json(); };
   const [match, timeline] = await Promise.all([fetchRiot(endpoint), fetchRiot(`${endpoint}/timeline`)]);
   return makeManualReport(match, timeline, gameId, player);
+}
+
+export type ReconciliationStatus = "matched" | "not_found" | "ambiguous" | "error";
+export type ReconciliationResult = { status: ReconciliationStatus; payload?: Data };
+
+const riotFetch = async (url: string) => {
+  const key = process.env.RIOT_API_KEY;
+  if (!key) throw new Error("RIOT_API_KEY is not configured on this server.");
+  const response = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" });
+  if (!response.ok) throw new Error(`Riot API request failed (HTTP ${response.status}).`);
+  return response.json();
+};
+
+function riotIdParts(riotId: string) {
+  const index = riotId.lastIndexOf("#");
+  if (index <= 0 || index === riotId.length - 1) throw new Error("A Riot ID must include a game name and tagline.");
+  return { gameName: riotId.slice(0, index), tagLine: riotId.slice(index + 1) };
+}
+
+async function accountForRiotId(riotId: string): Promise<{ region: RiotRegion; puuid: string } | null> {
+  const { gameName, tagLine } = riotIdParts(riotId);
+  for (const region of riotRegions) {
+    const response = await fetch(`https://${region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, { headers: { "X-Riot-Token": process.env.RIOT_API_KEY ?? "" }, cache: "no-store" });
+    if (response.status === 404) continue;
+    if (!response.ok) throw new Error(`Riot API request failed (HTTP ${response.status}).`);
+    const account = data(await response.json());
+    const puuid = text(account.puuid);
+    if (puuid) return { region, puuid };
+  }
+  return null;
+}
+
+function isCandidate(match: unknown, riotId: string, completedAt: Date, durationSeconds: number, gameMode: string) {
+  const info = data(data(match).info);
+  const participants = list(info.participants);
+  const participant = participants.find(value => sameRiotId(playerName(value), riotId));
+  if (!participant || text(info.gameMode).toUpperCase() !== gameMode.toUpperCase()) return false;
+  const duration = number(info.gameDuration);
+  const end = number(info.gameEndTimestamp) || number(info.gameCreation) + duration * 1000;
+  return Math.abs(duration - durationSeconds) <= 45 && Math.abs(end - completedAt.getTime()) <= 5 * 60_000;
+}
+
+export async function reconcileReportPayload(payload: Data, completedAt: Date, riotId: string): Promise<ReconciliationResult> {
+  try {
+    const account = await accountForRiotId(riotId);
+    const durationSeconds = number(payload.duration_seconds);
+    const gameMode = text(payload.game_mode);
+    if (!account || !durationSeconds || !gameMode) return { status: "not_found" };
+    const startTime = Math.floor((completedAt.getTime() - (durationSeconds + 5 * 60) * 1000) / 1000);
+    const endTime = Math.floor((completedAt.getTime() + 5 * 60_000) / 1000);
+    const ids = await riotFetch(`https://${account.region}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(account.puuid)}/ids?startTime=${startTime}&endTime=${endTime}&count=20`) as unknown;
+    if (!Array.isArray(ids)) return { status: "not_found" };
+    const matches = await Promise.all(ids.filter((id): id is string => typeof id === "string").map(async id => ({ id, match: await riotFetch(`https://${account.region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(id)}`) })));
+    const candidates = matches.filter(candidate => isCandidate(candidate.match, riotId, completedAt, durationSeconds, gameMode));
+    if (candidates.length === 0) return { status: "not_found" };
+    if (candidates.length !== 1) return { status: "ambiguous" };
+    const report = await loadManualReport(account.region, candidates[0].id, riotId);
+    return { status: "matched", payload: hydrateReportPayload(payload, report) };
+  } catch {
+    return { status: "error" };
+  }
 }

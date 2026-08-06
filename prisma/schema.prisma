@@ -50,6 +50,7 @@ model Profile {
   id String @id @default(cuid())
   riotId String
   riotIdNormalized String @unique
+  slug String @unique
   accountId String
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   reports Report[]
