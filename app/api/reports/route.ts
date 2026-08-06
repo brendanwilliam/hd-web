@@ -13,7 +13,9 @@ export async function POST(request: Request) {
   try {
     const parsed = reportSchema.safeParse(await requestJson(request));
     if (!parsed.success) return jsonError("unsupported or malformed report");
-    const payload = safeReport(parsed.data);
+    // Older partial reports can lack their final timestamp. Keep them uploadable
+    // and use the receipt time rather than blocking every later queued report.
+    const payload = safeReport({ ...parsed.data, completed_at: parsed.data.completed_at || new Date().toISOString() });
     const riotIdNormalized = normalizeRiotId(payload.player);
     const profile = await db.profile.upsert({ where: { riotIdNormalized }, create: { riotId: payload.player, riotIdNormalized, accountId: token.accountId }, update: {} });
     if (profile.accountId !== token.accountId) return jsonError("Riot ID belongs to another account", 409);
