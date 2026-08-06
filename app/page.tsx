@@ -1,2 +1,3 @@
 import Link from "next/link";
-export default function Home() { return <main><h1>Handscheck</h1><p>Share privacy-safe League of Legends recaps from Input Activity for OBS.</p><p><Link href="/link">Link OBS</Link></p></main>; }
+import { riotRegions } from "@/lib/riot";
+export default function Home() { return <main><h1>Handscheck</h1><p>Share privacy-safe League of Legends recaps from Input Activity for OBS.</p><section><h2>Preview a Riot match</h2><p>Load Match-v5 data without local input telemetry to check report fallback behavior.</p><form action="/riot"><label>Region<select name="region" defaultValue="americas">{riotRegions.map(region => <option key={region} value={region}>{region[0].toUpperCase() + region.slice(1)}</option>)}</select></label><label>Game ID<input name="game" placeholder="NA1_123456789 or 123456789" required /></label><button type="submit">Load match</button></form></section><p><Link href="/link">Link OBS</Link></p></main>; }

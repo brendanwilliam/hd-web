@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { isRiotRegion, loadManualReport, riotRegions } from "@/lib/riot";
+
+const duration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+export default async function RiotPreview({ searchParams }: { searchParams: Promise<{ region?: string; game?: string; player?: string }> }) {
+  const { region = "americas", game = "", player = "" } = await searchParams;
+  if (!game || !isRiotRegion(region)) return <main><h1>Riot match preview</h1><p>Choose a valid routing region and game ID on the <Link href="/">home page</Link>.</p></main>;
+  try {
+    const report = await loadManualReport(region, game, player);
+    return <main><p><Link href="/">← Home</Link></p><h1>{report.champion} recap</h1><p>{report.player} · {report.outcome} · {report.gameMode} · {report.map} · {duration(report.durationSeconds)}</p><section><form action="/riot"><input type="hidden" name="region" value={region} /><input type="hidden" name="game" value={game} /><label>Viewing player<select name="player" defaultValue={report.player}>{report.participants.map(participant => <option key={participant.riotId} value={participant.riotId}>{participant.riotId} · {participant.champion}</option>)}</select></label><button type="submit">Load player</button></form></section><section><h2>Gameplay</h2><p>Team gold: {report.teamGold.toLocaleString()} · Enemy gold: {report.enemyTeamGold.toLocaleString()}</p><p>Team kills: {report.teamKills} · Enemy kills: {report.enemyTeamKills}</p><p>K / D / A: {report.final.kills} / {report.final.deaths} / {report.final.assists} · CS: {report.final.cs} · Gold: {report.final.gold.toLocaleString()} · Level: {report.final.level}</p></section><section><h2>Riot timeline</h2><p>{report.samples.length} timeline samples · {report.events.length} game events</p><ul>{report.events.slice(0, 100).map(event => <li key={String(event.id)}>{duration(Number(event.seconds))} · {String(event.category)}: {String(event.detail)}</li>)}</ul></section><section><h2>Input & mouse activity</h2><p>Unavailable: this preview was populated only from Riot APIs. Record with Input Activity OBS to add private, aggregate input and mouse telemetry.</p></section></main>;
+  } catch (error) { return <main><p><Link href="/">← Home</Link></p><h1>Riot match unavailable</h1><p>{error instanceof Error ? error.message : "Unable to load this match."}</p></main>; }
+}

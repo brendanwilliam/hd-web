@@ -1,7 +1,10 @@
 import { appUrl } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { setSession } from "@/lib/session";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+const returnToCookie = "handscheck_oauth_return_to";
 
 export async function GET(request: Request) {
   const code = new URL(request.url).searchParams.get("code");
@@ -14,5 +17,8 @@ export async function GET(request: Request) {
   if (!profile.id || !profile.login) return new NextResponse("GitHub profile unavailable", { status: 401 });
   const account = await db.account.upsert({ where: { githubId: String(profile.id) }, create: { githubId: String(profile.id), login: profile.login, avatarUrl: profile.avatar_url }, update: { login: profile.login, avatarUrl: profile.avatar_url } });
   await setSession(account.id);
-  return NextResponse.redirect(new URL("/link", request.url));
+  const returnTo = (await cookies()).get(returnToCookie)?.value ?? "/link";
+  const response = NextResponse.redirect(new URL(returnTo, request.url));
+  response.cookies.delete(returnToCookie);
+  return response;
 }

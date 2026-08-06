@@ -13,11 +13,12 @@ export async function POST(request: Request) {
   try {
     const parsed = reportSchema.safeParse(await requestJson(request));
     if (!parsed.success) return jsonError("unsupported or malformed report");
-    const payload = safeReport(parsed.data);
+    // Older partial reports can lack their final timestamp. Keep them uploadable
+    // and use the receipt time rather than blocking every later queued report.
+    const payload = safeReport({ ...parsed.data, completed_at: parsed.data.completed_at || new Date().toISOString() });
     const riotIdNormalized = normalizeRiotId(payload.player);
-    let profile = await db.profile.findUnique({ where: { riotIdNormalized } });
-    if (profile && profile.accountId !== token.accountId) return jsonError("Riot ID belongs to another account", 409);
-    if (!profile) profile = await db.profile.create({ data: { riotId: payload.player, riotIdNormalized, accountId: token.accountId } });
+    const profile = await db.profile.upsert({ where: { riotIdNormalized }, create: { riotId: payload.player, riotIdNormalized, accountId: token.accountId }, update: {} });
+    if (profile.accountId !== token.accountId) return jsonError("Riot ID belongs to another account", 409);
     const reportJson = payload as Prisma.InputJsonValue;
     await db.report.upsert({ where: { id: payload.id }, create: { id: payload.id, profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson }, update: { profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson } });
     await db.apiToken.update({ where: { id: token.id }, data: { lastUsedAt: new Date() } });
