@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const reportJson = payload as Prisma.InputJsonValue;
     await db.report.upsert({ where: { id: payload.id }, create: { id: payload.id, profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson }, update: { profileId: profile.id, completedAt: new Date(payload.completed_at), champion: payload.champion, gameMode: payload.game_mode, durationSeconds: payload.duration_seconds, payload: reportJson } });
     await db.apiToken.update({ where: { id: token.id }, data: { lastUsedAt: new Date() } });
-    return NextResponse.json({ id: payload.id, profile: `/${encodeURIComponent(profile.riotId)}` });
+    const profilePath = `/${encodeURIComponent(profile.riotId)}`;
+    return NextResponse.json({ id: payload.id, profile: profilePath, url: `${profilePath}/reports/${encodeURIComponent(payload.id)}` });
   } catch (error) { return jsonError(error instanceof Error && error.message === "payload_too_large" ? "payload too large" : "invalid JSON"); }
 }
