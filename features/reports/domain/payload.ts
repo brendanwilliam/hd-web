@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const object = z.record(z.unknown());
+
 const maxTelemetrySamples = 10_000;
 export const reportSchema = z.object({
   schema_version: z.union([z.literal(4), z.literal(5)]), id: z.string().uuid(), completed_at: z.string().datetime().or(z.literal("")),

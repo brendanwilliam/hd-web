@@ -1,8 +1,8 @@
-import { db } from "@/lib/db";
-import { digest } from "@/lib/crypto";
-import { jsonError, requestJson } from "@/lib/http";
-import { normalizeRiotId, reportSchema, safeReport } from "@/lib/report";
-import { collisionSlug, profilePath, profileSlug, reportPath } from "@/lib/profile";
+import { collisionSlug, profilePath, profileSlug, reportPath } from "@/features/profiles/domain/paths";
+import { normalizeRiotId, reportSchema, safeReport } from "@/features/reports/domain/payload";
+import { digest } from "@/shared/crypto";
+import { jsonError, requestJson } from "@/shared/http";
+import { db } from "@/shared/server/db";
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 

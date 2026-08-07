@@ -1,6 +1,6 @@
-import { db } from "@/lib/db";
-import { digest, secret } from "@/lib/crypto";
-import { jsonError, requestJson } from "@/lib/http";
+import { digest, secret } from "@/shared/crypto";
+import { jsonError, requestJson } from "@/shared/http";
+import { db } from "@/shared/server/db";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {

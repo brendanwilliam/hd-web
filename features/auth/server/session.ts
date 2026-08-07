@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 const cookieName = "handscheck_session";
+
 const key = () => new TextEncoder().encode(process.env.SESSION_SECRET);
 
 export async function sessionAccountId() {

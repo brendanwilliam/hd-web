@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isRiotRegion, loadManualReport, riotRegions } from "@/lib/riot";
+import { isRiotRegion, loadManualReport, riotRegions } from "@/features/riot/server/report";
 
 const duration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 export default async function RiotPreview({ searchParams }: { searchParams: Promise<{ region?: string; game?: string; player?: string }> }) {
