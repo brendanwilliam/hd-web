@@ -1,7 +1,7 @@
-import { db } from "@/lib/db";
-import { digest, secret, userCode } from "@/lib/crypto";
-import { appUrl } from "@/lib/auth";
-import { jsonError, requestJson } from "@/lib/http";
+import { appUrl } from "@/features/auth/server/account";
+import { digest, secret, userCode } from "@/shared/crypto";
+import { jsonError, requestJson } from "@/shared/http";
+import { db } from "@/shared/server/db";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {

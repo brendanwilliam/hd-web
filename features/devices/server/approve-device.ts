@@ -1,8 +1,9 @@
 "use server";
-import { db } from "@/lib/db";
-import { requireAccount } from "@/lib/auth";
+import { requireAccount } from "@/features/auth/server/account";
+import { db } from "@/shared/server/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 
 export async function approveDevice(formData: FormData) {
   const account = await requireAccount();

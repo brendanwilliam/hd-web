@@ -1,6 +1,6 @@
-import { db } from "@/lib/db";
-import { normalizeRiotId } from "@/lib/report";
-import { profilePath, reportPath } from "@/lib/profile";
+import { profilePath, reportPath } from "@/features/profiles/domain/paths";
+import { normalizeRiotId } from "@/features/reports/domain/payload";
+import { db } from "@/shared/server/db";
 import { notFound, redirect } from "next/navigation";
 
 export default async function ProfilePage({ params }: { params: Promise<{ riotId: string }> }) {

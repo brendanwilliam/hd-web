@@ -2,6 +2,19 @@
 
 Handscheck is the public, privacy-safe companion service for Input Activity OBS League recaps. It accepts only schema-version-4 reports and stores aggregate input telemetry, never individual keystrokes.
 
+## Code organization
+
+- `app/` contains Next.js route entry points and route-local presentation.
+- `features/` contains behavior owned by a product area, with `components/`,
+  `domain/`, and `server/` directories where appropriate.
+- `shared/` contains cross-feature infrastructure such as database, crypto, and
+  HTTP helpers.
+- `tests/` mirrors product areas for focused tests.
+- `skills/` contains repository-local instructions for agents.
+
+Run `npm run check:file-size` to ensure every authored text file remains at or
+below 400 nonblank lines. Generated and dependency artifacts are excluded.
+
 ## Local development
 
 1. Start the development-only Postgres database:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enforce File Size"
+  short_description: "Keep authored files under 400 lines"
+  default_prompt: "Use $enforce-file-size to validate this Handscheck web change."

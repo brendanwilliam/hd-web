@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Repository skills
+
+Before changing authored files, read the applicable repository-local skill:
+
+- `skills/enforce-file-size/SKILL.md` for additions, edits, or refactors.
+- `skills/organize-by-purpose/SKILL.md` when adding, moving, or substantially
+  restructuring application code.

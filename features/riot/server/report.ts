@@ -1,4 +1,5 @@
 const regions = ["americas", "europe", "asia", "sea"] as const;
+
 export type RiotRegion = (typeof regions)[number];
 export const isRiotRegion = (value: string): value is RiotRegion => regions.includes(value as RiotRegion);
 export const riotRegions = regions;
