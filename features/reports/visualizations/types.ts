@@ -14,6 +14,7 @@ export type ChartSeries = {
   points: ChartPoint[];
   step?: boolean;
   unit?: string;
+  normalization?: { minimum: number; maximum: number };
 };
 
 export type VisualizationGroup = "input" | "economy" | "combat";

@@ -82,6 +82,8 @@ function timelineSeries(values: ReportData[], mode: VisualizationMode, definitio
 export function reportSeriesGroups(payload: ReportData, mode: VisualizationMode): ChartSeriesGroup[] {
   const samples = timeline(payload);
   const input = dataItems(payload.input_samples);
+  const totalGoldEarned = Math.max(0, ...recordedValues(samples, "gold_earned").map(point => point.y));
+  const goldNormalization = totalGoldEarned > 0 ? { minimum: 0, maximum: totalGoldEarned } : undefined;
   return [
     {
       key: "input",
@@ -107,14 +109,14 @@ export function reportSeriesGroups(payload: ReportData, mode: VisualizationMode)
     {
       key: "economy",
       label: "Economy",
-      description: "Velocity and Acceleration are measured per minute and per minute².",
+      description: "Gold earned, spent, and unspent share the player's total earned gold scale. Velocity and Acceleration are measured per minute and per minute².",
       series: timelineSeries(samples, mode, [
         ["gold_earned", "Gold earned", "gold"],
         ["gold_spent", "Gold spent", "gold", true],
         ["unspent_gold", "Unspent gold", "gold", true],
         ["experience", "Experience", "XP"],
         ["cs", "CS", "CS"],
-      ]),
+      ]).map(series => ["gold_earned", "gold_spent", "unspent_gold"].includes(series.key) && mode === "cumulative" ? { ...series, normalization: goldNormalization } : series),
     },
     {
       key: "combat",
@@ -182,8 +184,8 @@ export function timelineEvents(payload: ReportData): TimelineEvent[] {
 
 export function normalizedPoints(series: ChartSeries) {
   const values = series.points.map(point => point.y);
-  const minimum = Math.min(...values);
-  const maximum = Math.max(...values);
+  const minimum = series.normalization?.minimum ?? Math.min(...values);
+  const maximum = series.normalization?.maximum ?? Math.max(...values);
   return series.points.map(point => ({
     ...point,
     normalized: minimum === maximum ? 50 : ((point.y - minimum) * 100) / (maximum - minimum),
