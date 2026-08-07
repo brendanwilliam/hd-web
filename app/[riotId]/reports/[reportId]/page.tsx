@@ -33,7 +33,7 @@ export default async function ReportPage({ params }: { params: Promise<{ riotId:
   let payload = report.payload as ObjectData;
   const enrichment = object(payload.enrichment);
   const gameId = typeof payload.game_id === "string" ? payload.game_id : "";
-  const needsTimelineRefresh = enrichment.riot_match_v5_timeline_version !== 5;
+  const needsTimelineRefresh = enrichment.riot_match_v5_timeline_version !== 6;
   if (needsTimelineRefresh && gameId) {
     try {
       const hydrated = hydrateReportPayload(payload, await loadManualReport(riotRegionForGameId(gameId), gameId, profile.riotId));

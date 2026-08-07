@@ -53,7 +53,7 @@ export function hydrateReportPayload(payload: Data, report: ManualReport): Data 
     timeline_events: report.events,
     abilities: report.abilities,
     item_events: report.items,
-    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 5 }
+    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 6 }
   };
 }
 
@@ -76,19 +76,32 @@ export async function loadManualReport(region: RiotRegion, gameId: string, playe
   const endpoint = `https://${region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(gameId)}`;
   const fetchRiot = async (url: string) => { const response = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" }); if (!response.ok) throw new Error(`Riot API request failed (HTTP ${response.status}).`); return response.json(); };
   const [match, timeline] = await Promise.all([fetchRiot(endpoint), fetchRiot(`${endpoint}/timeline`)]);
-  const version = text(data(data(match).info).gameVersion).split(".").slice(0, 3).join(".");
+  const version = dataDragonVersion(text(data(data(match).info).gameVersion));
   const items = version ? await loadItems(version) : {};
   return makeManualReport(match, timeline, gameId, player, items);
 }
 
+export const dataDragonVersion = (gameVersion: string) => gameVersion.match(/\d+\.\d+\.\d+/)?.[0] ?? "";
+
 async function loadItems(version: string): Promise<Record<string, ItemData>> {
+  const direct = await fetchItems(version);
+  if (direct) return direct;
+  try {
+    const response = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: "force-cache" });
+    const versions = response.ok ? await response.json() : [];
+    const [major, minor] = version.split(".");
+    const fallback = Array.isArray(versions) ? versions.find(value => typeof value === "string" && value.startsWith(`${major}.${minor}.`)) : undefined;
+    return fallback ? await fetchItems(fallback) ?? {} : {};
+  } catch { return {}; }
+}
+
+async function fetchItems(version: string): Promise<Record<string, ItemData> | null> {
   try {
     const response = await fetch(`https://ddragon.leagueoflegends.com/cdn/${encodeURIComponent(version)}/data/en_US/item.json`, { cache: "force-cache" });
-    if (!response.ok) return {};
-    const payload = data(await response.json());
-    const items = data(payload.data) as Record<string, ItemData>;
-    return Object.keys(items).length ? items : {};
-  } catch { return {}; }
+    if (!response.ok) return null;
+    const items = data(data(await response.json()).data) as Record<string, ItemData>;
+    return Object.keys(items).length ? items : null;
+  } catch { return null; }
 }
 
 export type ReconciliationStatus = "matched" | "not_found" | "ambiguous" | "error";

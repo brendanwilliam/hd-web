@@ -8,7 +8,7 @@ const participants = [
   { participantId: 3, teamId: 100, riotIdGameName: "Ally", riotIdTagline: "NA1", championName: "Nami", teamPosition: "UTILITY" },
 ];
 const frame = (timestamp: number, totalGold: number, events: object[] = []) => ({ timestamp, events, participantFrames: { "1": { totalGold, currentGold: totalGold, xp: totalGold * 2, level: 1, minionsKilled: 0, jungleMinionsKilled: 0, position: { x: 1, y: 1 } }, "2": { totalGold: 500, xp: 1000, position: { x: 2, y: 2 } }, "3": { totalGold: 500, xp: 1000, position: { x: 3, y: 3 } } } });
-const items = { "1001": { name: "Boots", gold: { total: 300, sell: 90 }, maps: { "11": true } }, "1002": { name: "Big item", gold: { total: 1000, sell: 700 }, maps: { "11": true } } };
+const items = { "1001": { name: "Boots", gold: { base: 300, total: 300, sell: 90 }, maps: { "11": true } }, "1002": { name: "Big item", gold: { base: 700, total: 1000, sell: 700 }, maps: { "11": true } } };
 
 describe("Riot Match-v5 timeline normalization", () => {
   it("normalizes player-aware events, item ledger, structures, and buff ranges", () => {
@@ -23,8 +23,8 @@ describe("Riot Match-v5 timeline normalization", () => {
     const kill = normalized.events.find(event => event.kind === "player_kill");
     expect(kill).toMatchObject({ killer_name: "Me#NA1", killer_role: "MIDDLE", victim_name: "Them#NA1", victim_role: "MIDDLE", reward_estimate_note: expect.stringContaining("Estimated") });
     expect(normalized.events).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "level_up", seconds: 58, level: 2, ability: "Q", ability_rank: 1, ability_level_up_seconds: 60, ability_level_up_delay_seconds: 2 }), expect.objectContaining({ kind: "enemy_structure", structure: "Top Tier 1 turret" }), expect.objectContaining({ kind: "team_structure", structure: "Mid inhibitor" })]));
-    expect(normalized.items.map(item => item.transaction_gold)).toEqual([300, -90, 1000, -1000]);
-    expect(normalized.items[0]).toMatchObject({ item_id: 1001, item_name: "Boots", item_cost: 300, item_sell_price: 90 });
+    expect(normalized.items.map(item => item.transaction_gold)).toEqual([300, -90, 700, -700]);
+    expect(normalized.items[0]).toMatchObject({ item_id: 1001, item_name: "Boots", item_cost: 300, item_total_cost: 300, item_sell_price: 90 });
     expect(normalizeTimeline(match, timeline, 1).items[0]).toMatchObject({ item_id: 1001, transaction_gold: undefined, price_available: false });
     expect(normalized.samples.filter(sample => sample.seconds === 120).at(-1)).toMatchObject({ gold_spent: 210, unspent_gold: 1190 });
     expect(normalized.events.find(event => event.kind === "objective")).toMatchObject({ end_seconds: 150, buff_active_seconds: 30, buff_holders: expect.arrayContaining([expect.objectContaining({ name: "Me#NA1", duration_seconds: 30 }), expect.objectContaining({ name: "Ally#NA1", duration_seconds: 15 })]) });

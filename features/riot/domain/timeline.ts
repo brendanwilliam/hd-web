@@ -8,7 +8,7 @@ const playerName = (player: Data) => `${text(player.riotIdGameName)}#${text(play
 const seconds = (value: unknown) => Math.round(number(value) / 1000);
 const hasPosition = (frame: Data | undefined, id: number) => Object.keys(data(data(data(data(frame).participantFrames)[String(id)]).position)).length > 0;
 
-export type ItemData = { name?: string; gold?: { total?: number; sell?: number }; maps?: Record<string, boolean>; into?: string[] };
+export type ItemData = { name?: string; gold?: { base?: number; total?: number; sell?: number }; maps?: Record<string, boolean>; into?: string[] };
 export type Participant = { id: number; teamId: number; riotId: string; champion: string; role: string };
 export type NormalizedTimeline = { samples: Data[]; events: Data[]; abilities: Data[]; items: Data[] };
 
@@ -45,7 +45,7 @@ function objectiveLabel(event: Data) {
 
 function itemDetails(itemId: number, items: Record<string, ItemData>) {
   const item = items[String(itemId)];
-  return { item_id: itemId, item_name: item?.name || `Item ${itemId}`, item_cost: typeof item?.gold?.total === "number" ? item.gold.total : undefined, item_sell_price: typeof item?.gold?.sell === "number" ? item.gold.sell : undefined, completed_item: !!item && !item.into?.length };
+  return { item_id: itemId, item_name: item?.name || `Item ${itemId}`, item_cost: typeof item?.gold?.base === "number" ? item.gold.base : undefined, item_total_cost: typeof item?.gold?.total === "number" ? item.gold.total : undefined, item_sell_price: typeof item?.gold?.sell === "number" ? item.gold.sell : undefined, completed_item: !!item && !item.into?.length };
 }
 
 function frameStats(frames: Data[], id: number, at: number) {
