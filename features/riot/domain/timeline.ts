@@ -6,6 +6,7 @@ const number = (value: unknown) => typeof value === "number" ? value : 0;
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const playerName = (player: Data) => `${text(player.riotIdGameName)}#${text(player.riotIdTagline)}`;
 const seconds = (value: unknown) => Math.round(number(value) / 1000);
+const hasPosition = (frame: Data | undefined, id: number) => Object.keys(data(data(data(data(frame).participantFrames)[String(id)]).position)).length > 0;
 
 export type ItemData = { name?: string; gold?: { total?: number; sell?: number }; maps?: Record<string, boolean>; into?: string[] };
 export type Participant = { id: number; teamId: number; riotId: string; champion: string; role: string };
@@ -71,9 +72,11 @@ function rewardEstimate(frames: Data[], killerId: number, at: number) {
 export function normalizeTimeline(match: unknown, timeline: unknown, selectedId: number, items: Record<string, ItemData> = {}): NormalizedTimeline {
   const frames = list(data(data(timeline).info).frames), participants = participantsFor(match);
   const selected = player(participants, selectedId), selectedTeam = selected?.teamId;
+  const matchEnd = number(data(data(match).info).gameDuration) * 1000;
   const events: Data[] = [], abilities: Data[] = [], itemLedger: Data[] = [], transactionSamples: Data[] = [];
   const levels: Record<number, number> = {}, transactions: { itemId: number; spent: number }[] = [];
-  const kills: { at: number; victim: number }[] = [];
+  const levelUps: { id: string; at: number; level: number }[] = [], skillUps: { id: string; at: number; ability: string; rank: number }[] = [];
+  const kills: { id: string; at: number; victim: number }[] = [];
   let spent = 0;
   const addTransaction = (event: Data, index: string, change: number, detail: Data) => {
     spent += change;
@@ -86,25 +89,45 @@ export function normalizeTimeline(match: unknown, timeline: unknown, selectedId:
       const type = text(event.type), at = number(event.timestamp), id = `${frameIndex}-${eventIndex}`;
       if (type === "CHAMPION_KILL") {
         const killerId = number(event.killerId), victimId = number(event.victimId), killer = player(participants, killerId), victim = player(participants, victimId);
-        kills.push({ at, victim: victimId });
+        kills.push({ id, at, victim: victimId });
         if (killerId === selectedId || victimId === selectedId) events.push({ id, seconds: seconds(at), kind: killerId === selectedId ? "player_kill" : "player_death", category: killerId === selectedId ? "Kill" : "Death", detail: killerId === selectedId ? `Killed ${victim?.riotId || "a player"}` : `Killed by ${killer?.riotId || "an unknown player"}`, team: killer?.teamId === selectedTeam ? "team" : "enemy", ...person("killer", killer), ...person("victim", victim), ...rewardEstimate(frames, killerId, at) });
       } else if (type === "SKILL_LEVEL_UP" && number(event.participantId) === selectedId) {
         const slot = number(event.skillSlot);
-        if (slot >= 1 && slot <= 4) { const ability = "QWER"[slot - 1], level = levels[slot] = (levels[slot] ?? 0) + 1; const record = { id, seconds: seconds(at), kind: "skill_level", category: "Level", detail: `${ability} level ${level}`, ability, level }; abilities.push(record); events.push(record); }
-      } else if (type === "LEVEL_UP" && number(event.participantId) === selectedId) events.push({ id, seconds: seconds(at), kind: "level_up", category: "Level", detail: "Level up" });
+        if (slot >= 1 && slot <= 4) { const ability = "QWER"[slot - 1], rank = levels[slot] = (levels[slot] ?? 0) + 1; const record = { id, seconds: seconds(at), ability, level: rank }; abilities.push(record); skillUps.push({ id, at, ability, rank }); }
+      } else if (type === "LEVEL_UP" && number(event.participantId) === selectedId) levelUps.push({ id, at, level: number(event.level) });
       else if (type === "ITEM_PURCHASED" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); const cost = details.item_cost; if (cost !== undefined) transactions.push({ itemId: number(event.itemId), spent: cost }); addTransaction(event, id, cost ?? 0, { ...details, transaction: "Purchased" }); }
       else if (type === "ITEM_SOLD" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); addTransaction(event, id, -(details.item_sell_price ?? 0), { ...details, transaction: "Sold" }); }
-      else if (type === "ITEM_UNDO" && number(event.participantId) === selectedId) { const beforeId = number(event.beforeId), transaction = [...transactions].reverse().find(value => value.itemId === beforeId); const details = itemDetails(beforeId, items); addTransaction(event, id, -(transaction?.spent ?? 0), { ...details, transaction: "Undo" }); }
-      else if (type === "BUILDING_KILL") { const destroyedTeam = number(event.teamId), team = destroyedTeam === selectedTeam ? "enemy" : "team"; events.push({ id, seconds: seconds(at), kind: team === "team" ? "enemy_structure" : "team_structure", category: "Structure", team, detail: `${structureLabel(event)} destroyed`, structure: structureLabel(event) }); }
+      else if (type === "ITEM_UNDO" && number(event.participantId) === selectedId) { const beforeId = number(event.beforeId); let transactionIndex = -1; for (let index = transactions.length - 1; index >= 0; index--) if (transactions[index].itemId === beforeId) { transactionIndex = index; break; } const transaction = transactionIndex >= 0 ? transactions.splice(transactionIndex, 1)[0] : undefined; const details = itemDetails(beforeId, items); addTransaction(event, id, -(transaction?.spent ?? 0), { ...details, transaction: "Undo" }); }
+      else if (type === "BUILDING_KILL") { const destroyedTeam = number(event.teamId), team = destroyedTeam === selectedTeam ? "enemy" : "team", structure = structureLabel(event), inhibitor = text(event.buildingType) === "INHIBITOR_BUILDING", end = inhibitor ? Math.min(at + 300_000, matchEnd) : at; events.push({ id, seconds: seconds(at), ...(inhibitor ? { end_seconds: seconds(end), structure_down_seconds: seconds(end) - seconds(at) } : {}), kind: team === "team" ? "enemy_structure" : "team_structure", category: "Structure", team, detail: `${structure} destroyed`, structure }); }
       else if (type === "ELITE_MONSTER_KILL") { const killer = player(participants, number(event.killerId)); events.push({ id, seconds: seconds(at), kind: "objective", category: "Objective", detail: objectiveLabel(event), objective: objectiveLabel(event), objective_team: killer?.teamId === selectedTeam ? "team" : "enemy", ...person("killer", killer) }); }
     }
   }
+  const unmatchedSkills = new Set(skillUps.map(skill => skill.id));
+  for (const [index, levelUp] of levelUps.entries()) {
+    const skill = skillUps.filter(value => unmatchedSkills.has(value.id)).sort((left, right) => Math.abs(left.at - levelUp.at) - Math.abs(right.at - levelUp.at))[0];
+    const matched = skill && Math.abs(skill.at - levelUp.at) <= 5_000 ? skill : undefined;
+    if (matched) unmatchedSkills.delete(matched.id);
+    const level = levelUp.level || index + 1;
+    events.push({ id: levelUp.id, seconds: seconds(levelUp.at), kind: "level_up", category: "Level", detail: `Level ${level}${matched ? ` · ${matched.ability} rank ${matched.rank}` : ""}`, level, level_up_seconds: seconds(levelUp.at), ability: matched?.ability, ability_rank: matched?.rank, ability_level_up_seconds: matched ? seconds(matched.at) : undefined, ability_level_up_delay_seconds: matched ? Math.round((matched.at - levelUp.at) / 1000) : undefined });
+  }
+  const deathWindows = kills.sort((left, right) => left.at - right.at).map(kill => ({ ...kill, end: Math.min(frames.find(frame => number(frame.timestamp) > kill.at && hasPosition(frame, kill.victim))?.timestamp as number || matchEnd, matchEnd) }));
+  const cumulativeDead = new Map<number, number>();
+  for (const death of deathWindows) {
+    const duration = seconds(death.end) - seconds(death.at), total = (cumulativeDead.get(death.victim) ?? 0) + duration;
+    cumulativeDead.set(death.victim, total);
+    const displayed = events.find(event => text(event.id) === death.id);
+    if (displayed) Object.assign(displayed, { end_seconds: seconds(death.end), death_timer_seconds: duration, cumulative_dead_seconds: total, death_timer_note: "Estimated from the next participant frame with a position." });
+  }
   for (const event of events.filter(event => text(event.kind) === "objective" && ["Baron Nashor", "Elder Dragon"].includes(text(event.objective)))) {
     const at = number(event.seconds) * 1000, duration = text(event.objective) === "Baron Nashor" ? 180 : 150, killer = number(event.killer_id), team = player(participants, killer)?.teamId;
-    const frame = [...frames].reverse().find(value => number(value.timestamp) <= at);
-    const positioned = participants.filter(participant => Object.keys(data(data(data(data(frame).participantFrames)[String(participant.id)]).position)).length);
-    const living = (positioned.length ? positioned : participants).filter(participant => participant.teamId === team);
-    for (const holder of living) { const death = kills.find(value => value.victim === holder.id && value.at > at); const end = Math.min(at + duration * 1000, death?.at ?? Infinity, number(data(data(match).info).gameDuration) * 1000); events.push({ id: `${event.id}-buff-${holder.id}`, seconds: number(event.seconds), end_seconds: Math.round(end / 1000), kind: "objective_buff", category: "Objective", detail: `${event.objective} buff: ${holder.riotId}`, objective: event.objective, holder_name: holder.riotId, holder_role: holder.role, objective_team: event.objective_team, active_holders: living.map(value => value.riotId).join(", ") }); }
+    const holders = participants.filter(participant => participant.teamId === team).map(holder => {
+      const dead = deathWindows.find(death => death.victim === holder.id && death.at <= at && death.end > at);
+      const death = deathWindows.find(value => value.victim === holder.id && value.at > at);
+      const end = dead ? at : Math.min(at + duration * 1000, death?.at ?? matchEnd, matchEnd);
+      return { name: holder.riotId, role: holder.role, duration_seconds: seconds(end) - seconds(at), end_seconds: seconds(end) };
+    });
+    const end = Math.max(at, ...holders.map(holder => holder.end_seconds * 1000));
+    Object.assign(event, { end_seconds: seconds(end), buff_active_seconds: seconds(end) - seconds(at), buff_holders: holders });
   }
   const samples = frames.flatMap(frame => { const stats = data(data(frame.participantFrames)[String(selectedId)]); const at = seconds(frame.timestamp); return Object.keys(stats).length ? [{ seconds: at, cs: number(stats.minionsKilled) + number(stats.jungleMinionsKilled), level: number(stats.level), gold: number(stats.currentGold), estimatedGold: number(stats.totalGold), gold_earned: number(stats.totalGold), experience: number(stats.xp), gold_spent: spentAt(transactionSamples, at), unspent_gold: number(stats.totalGold) - spentAt(transactionSamples, at) }] : []; });
   return { samples: [...samples, ...transactionSamples].sort((left, right) => number(left.seconds) - number(right.seconds)), events: events.sort((left, right) => number(left.seconds) - number(right.seconds)), abilities, items: itemLedger };
