@@ -64,7 +64,7 @@ function groupNearbyEvents(events: TimelineEvent[], kind: TimelineEventKind, x: 
     }, []);
 }
 
-function ComparisonChart({ active, mode, duration }: { active: ChartSeries[]; mode: VisualizationMode; duration: number }) {
+function ComparisonChart({ active, mode, duration, onHoverTime }: { active: ChartSeries[]; mode: VisualizationMode; duration: number; onHoverTime: (time: number | null) => void }) {
   const chartRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; time: number } | null>(null);
   const x = d3.scaleLinear().domain([0, duration]).range([margin.left, width - margin.right]);
@@ -80,9 +80,11 @@ function ComparisonChart({ active, mode, duration }: { active: ChartSeries[]; mo
         onPointerMove={event => {
           const bounds = event.currentTarget.getBoundingClientRect();
           const offset = event.clientX - bounds.left;
-          setTooltip({ x: offset, time: x.invert((offset / bounds.width) * width) });
+          const time = x.invert((offset / bounds.width) * width);
+          setTooltip({ x: offset, time });
+          onHoverTime(time);
         }}
-        onPointerLeave={() => setTooltip(null)}
+        onPointerLeave={() => { setTooltip(null); onHoverTime(null); }}
       >
         {d3.ticks(0, 100, 5).map(value => (
           <g key={value}>
@@ -122,11 +124,13 @@ function ComparisonChart({ active, mode, duration }: { active: ChartSeries[]; mo
   );
 }
 
-function EventTimeline({ events, duration }: { events: TimelineEvent[]; duration: number }) {
+function EventTimeline({ events, duration, hoverTime }: { events: TimelineEvent[]; duration: number; hoverTime: number | null }) {
   const timelineRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const timelineHeight = timelineRows.length * 33 + 32;
   const x = d3.scaleLinear().domain([0, duration]).range([margin.left, width - margin.right]);
+  const groups = timelineRows.flatMap(([kind], row) => groupNearbyEvents(events, kind, x).map(group => ({ ...group, kind, row })));
+  const cursorTooltips = hoverTime === null ? [] : groups.filter(group => Math.abs(x(group.seconds) - x(hoverTime)) <= (group.events.length > 1 ? 10 : 6)).map(group => ({ x: (x(group.seconds) / width) * 100, y: group.row * 33 + 14, content: eventGroupTooltip(group.events) }));
   const showTooltip = (event: PointerEvent<SVGGElement> | FocusEvent<SVGGElement>, group: TimelineEvent[]) => {
     const bounds = timelineRef.current?.getBoundingClientRect();
     if (!bounds) return;
@@ -137,11 +141,12 @@ function EventTimeline({ events, duration }: { events: TimelineEvent[]; duration
   return (
     <div className="event-timeline">
       <svg ref={timelineRef} viewBox={`0 0 ${width} ${timelineHeight}`} role="img" aria-label="Match events aligned to the comparison chart game-time axis">
+        {hoverTime !== null && <line className="chart-cursor" x1={x(hoverTime)} x2={x(hoverTime)} y1="0" y2={timelineHeight - 27} />}
         {timelineRows.map(([kind, label], row) => (
           <g key={kind}>
             <text className="chart-label" x={margin.left - 7} y={row * 33 + 18} textAnchor="end">{label}</text>
             <line className="chart-grid" x1={margin.left} x2={width - margin.right} y1={row * 33 + 14} y2={row * 33 + 14} />
-            {groupNearbyEvents(events, kind, x).map((group, index) => (
+            {groups.filter(group => group.kind === kind).map((group, index) => (
               <g key={index} className="event-group" tabIndex={0} aria-label={eventGroupTooltip(group.events)} onPointerEnter={event => showTooltip(event, group.events)} onPointerLeave={() => setTooltip(null)} onFocus={event => showTooltip(event, group.events)} onBlur={() => setTooltip(null)}>
                 <circle className={`event-dot ${kind}`} cx={x(group.seconds)} cy={row * 33 + 14} r={group.events.length > 1 ? 10 : 6} />
                 {group.events.length > 1 && <text className="event-group-count" x={x(group.seconds)} y={row * 33 + 17.5} textAnchor="middle">{group.events.length}</text>}
@@ -156,7 +161,7 @@ function EventTimeline({ events, duration }: { events: TimelineEvent[]; duration
           </g>
         ))}
       </svg>
-      {tooltip && <aside className="event-tooltip" style={{ left: `${Math.min(78, Math.max(1, tooltip.x))}%`, top: Math.max(0, tooltip.y - 10) }}>{tooltip.content}</aside>}
+      {(tooltip ? [tooltip] : cursorTooltips).map((item, index) => <aside key={`${item.content}-${index}`} className="event-tooltip" style={{ left: `${Math.min(78, Math.max(1, item.x))}%`, top: Math.max(0, item.y - 10) }}>{item.content}</aside>)}
     </div>
   );
 }
@@ -165,6 +170,7 @@ export function ReportVisualizations({ payload }: { payload: ReportData }) {
   const [mode, setMode] = useState<VisualizationMode>("cumulative");
   const series = useMemo(() => reportSeries(payload, mode), [payload, mode]);
   const [enabled, setEnabled] = useState<Set<string>>(() => new Set());
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
   const active = series.filter(series => !enabled.size || enabled.has(series.key));
   const events = useMemo(() => timelineEvents(payload), [payload]);
   const duration = Math.max(
@@ -202,8 +208,8 @@ export function ReportVisualizations({ payload }: { payload: ReportData }) {
           </button>
         ))}
       </div>
-      {active.length ? <ComparisonChart active={active} mode={mode} duration={duration} /> : <p className="report-note">Select a series to compare recorded data.</p>}
-      <EventTimeline events={events} duration={duration} />
+      {active.length ? <ComparisonChart active={active} mode={mode} duration={duration} onHoverTime={setHoverTime} /> : <p className="report-note">Select a series to compare recorded data.</p>}
+      <EventTimeline events={events} duration={duration} hoverTime={hoverTime} />
       <p className="report-note">Each series is independently normalized to 0–100. Rates and acceleration use exact sample intervals; no values are interpolated.</p>
     </section>
   );
