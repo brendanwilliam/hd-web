@@ -22,7 +22,7 @@ export async function attachRiotMatch(formData: FormData) {
   if (!report) return;
   try {
     const payload = hydrateReportPayload(report.payload as Data, await loadManualReport(region, gameId, profile.riotId));
-    await db.report.update({ where: { id: report.id }, data: { completedAt: new Date(String(payload.completed_at)), champion: typeof payload.champion === "string" ? payload.champion : null, gameMode: typeof payload.game_mode === "string" ? payload.game_mode : null, durationSeconds: typeof payload.duration_seconds === "number" ? payload.duration_seconds : null, payload: payload as Prisma.InputJsonValue } });
+    await db.report.update({ where: { id: report.id }, data: { completedAt: new Date(String(payload.completed_at)), champion: typeof payload.champion === "string" ? payload.champion : null, gameMode: typeof payload.game_mode === "string" ? payload.game_mode : null, durationSeconds: typeof payload.duration_seconds === "number" ? payload.duration_seconds : null, riotGameId: typeof payload.game_id === "string" ? payload.game_id : null, payload: payload as Prisma.InputJsonValue } });
   } catch {
     return;
   }
