@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inputRollingOverlays, normalizedPoints, reportSeriesGroups, trailingRollingAverage } from "@/features/reports/visualizations/data";
+import { inputScatterPoints, normalizedPoints, reportSeriesGroups } from "@/features/reports/visualizations/data";
 
 const pointValues = (payload: object, group: "input" | "economy" | "combat", key: string, mode: "cumulative" | "rate" | "acceleration") => reportSeriesGroups(payload, mode).find(item => item.key === group)!.series.find(item => item.key === key)!;
 
@@ -42,12 +42,12 @@ describe("report visualization data", () => {
     expect(normalizedPoints(unspent).map(point => point.normalized)).toEqual([50, 70, 20]);
   });
 
-  it("creates 60-second trailing input overlays only outside cumulative mode", () => {
-    const actions = pointValues(payload, "input", "actions", "rate");
-    expect(actions).toMatchObject({ unit: " APM", points: [{ x: 20, y: 30 }, { x: 70, y: 24 }] });
-    expect(trailingRollingAverage(actions).points).toEqual([{ x: 20, y: 30 }, { x: 70, y: 27 }]);
-    expect(inputRollingOverlays([actions], "rate")).toHaveLength(1);
-    expect(inputRollingOverlays([pointValues(payload, "input", "actions", "cumulative")], "cumulative")).toEqual([]);
+  it("uses a 3-second rolling APM and DPI-calibrated mouse velocity for scatter points", () => {
+    expect(inputScatterPoints({ dpi: 800, input_samples: [{ seconds: 0, actions: 0, mouse_distance_pixels: 0 }, { seconds: 1, actions: 3, mouse_distance_pixels: 80 }, { seconds: 2, actions: 6, mouse_distance_pixels: 160 }, { seconds: 4, actions: 9, mouse_distance_pixels: 80 }] })).toEqual([
+      { seconds: 1, apm: 180, velocityCms: 0.254 },
+      { seconds: 2, apm: 270, velocityCms: 0.508 },
+      { seconds: 4, apm: 360, velocityCms: 0.127 },
+    ]);
   });
 
   it("omits unavailable legacy series without removing the panel definitions", () => {
