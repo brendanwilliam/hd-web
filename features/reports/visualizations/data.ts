@@ -1,6 +1,7 @@
 import type {
   ChartPoint,
   ChartSeries,
+  ChartSeriesGroup,
   ReportData,
   TimelineEvent,
   TimelineEventKind,
@@ -39,8 +40,9 @@ function cumulativeValues(values: ReportData[], key: string): ChartPoint[] {
   });
 }
 
-function applyMode(source: ChartPoint[], mode: VisualizationMode, multiplier = 1): ChartPoint[] {
+function applyMode(source: ChartPoint[], mode: VisualizationMode, perMinute = false): ChartPoint[] {
   if (mode === "cumulative") return source;
+  const multiplier = perMinute ? 60 : 1;
   const rates = source.slice(1).flatMap((point, index) => {
     const prior = source[index];
     const elapsed = point.x - prior.x;
@@ -49,49 +51,103 @@ function applyMode(source: ChartPoint[], mode: VisualizationMode, multiplier = 1
   if (mode === "rate") return rates;
   return rates.slice(1).flatMap((point, index) => {
     const elapsed = point.x - rates[index].x;
-    return elapsed > 0 ? [{ x: point.x, y: (point.y - rates[index].y) / elapsed }] : [];
+    return elapsed > 0 ? [{ x: point.x, y: ((point.y - rates[index].y) / elapsed) * multiplier }] : [];
   });
 }
 
-export function reportSeries(payload: ReportData, mode: VisualizationMode): ChartSeries[] {
-  const timeline = dataItems(payload.timeline_samples).length
+function unit(mode: VisualizationMode, cumulative: string, velocity: string, acceleration: string) {
+  return mode === "cumulative" ? cumulative : mode === "rate" ? velocity : acceleration;
+}
+
+function timeline(payload: ReportData) {
+  return dataItems(payload.timeline_samples).length
     ? dataItems(payload.timeline_samples)
     : dataItems(payload.samples).map(sample => ({
         seconds: sample.seconds,
         gold_earned: sample.estimated_gold ?? sample.gold,
       }));
+}
+
+function timelineSeries(values: ReportData[], mode: VisualizationMode, definitions: [string, string, string, boolean?][], offset = 0): ChartSeries[] {
+  return definitions.map(([key, label, seriesUnit, step], index) => ({
+    key,
+    label,
+    step,
+    color: colors[index + offset],
+    unit: unit(mode, ` ${seriesUnit}`, ` ${seriesUnit}/min`, ` ${seriesUnit}/min²`),
+    points: applyMode(recordedValues(values, key), mode, true),
+  })).filter(series => series.points.length);
+}
+
+export function reportSeriesGroups(payload: ReportData, mode: VisualizationMode): ChartSeriesGroup[] {
+  const samples = timeline(payload);
   const input = dataItems(payload.input_samples);
-  const timelineSeries: [string, string, boolean?][] = [
-    ["gold_earned", "Gold earned"],
-    ["experience", "Experience"],
-    ["gold_spent", "Gold spent", true],
-    ["unspent_gold", "Unspent gold", true],
-    ["damage_to_enemy_champions", "Champion damage"],
-    ["damage_to_objectives", "Objective damage"],
-  ];
   return [
-    ...timelineSeries.map(([key, label, step], index) => ({
-      key,
-      label,
-      step,
-      color: colors[index],
-      points: applyMode(recordedValues(timeline, key), mode),
-    })),
     {
-      key: "actions",
-      label: "Actions",
-      color: colors[6],
-      unit: mode === "cumulative" ? "" : " APM",
-      points: applyMode(cumulativeValues(input, "actions"), mode, 60),
+      key: "input",
+      label: "Input",
+      description: "Raw input lines are solid. Dashed lines show a trailing 60-second rolling average in Velocity and Acceleration views.",
+      series: [
+        {
+          key: "actions",
+          label: "Actions",
+          color: colors[6],
+          unit: unit(mode, "", " APM", " APM/s"),
+          points: applyMode(cumulativeValues(input, "actions"), mode, true),
+        },
+        {
+          key: "distance",
+          label: "Mouse distance",
+          color: colors[7],
+          unit: unit(mode, " px", " px/s", " px/s²"),
+          points: applyMode(cumulativeValues(input, "mouse_distance_pixels"), mode),
+        },
+      ].filter(series => series.points.length),
     },
     {
-      key: "distance",
-      label: "Mouse distance",
-      color: colors[7],
-      unit: mode === "cumulative" ? " px" : " px/s",
-      points: applyMode(cumulativeValues(input, "mouse_distance_pixels"), mode),
+      key: "economy",
+      label: "Economy",
+      description: "Velocity and Acceleration are measured per minute and per minute².",
+      series: timelineSeries(samples, mode, [
+        ["gold_earned", "Gold earned", "gold"],
+        ["gold_spent", "Gold spent", "gold", true],
+        ["unspent_gold", "Unspent gold", "gold", true],
+        ["experience", "Experience", "XP"],
+        ["cs", "CS", "CS"],
+      ]),
     },
-  ].filter(series => series.points.length);
+    {
+      key: "combat",
+      label: "Combat",
+      description: "Velocity and Acceleration are measured per minute and per minute².",
+      series: timelineSeries(samples, mode, [
+        ["damage_to_enemy_champions", "Champion damage", "damage"],
+        ["damage_to_objectives", "Objective damage", "damage"],
+      ], 4),
+    },
+  ];
+}
+
+export function reportSeries(payload: ReportData, mode: VisualizationMode): ChartSeries[] {
+  return reportSeriesGroups(payload, mode).flatMap(group => group.series);
+}
+
+export function trailingRollingAverage(series: ChartSeries, seconds = 60): ChartSeries {
+  return {
+    ...series,
+    key: `${series.key}-rolling-average`,
+    label: `${series.label} · ${seconds}s rolling average`,
+    points: series.points.map(point => {
+      const points = series.points.filter(candidate => candidate.x >= point.x - seconds && candidate.x <= point.x);
+      return { x: point.x, y: points.reduce((total, candidate) => total + candidate.y, 0) / points.length };
+    }),
+  };
+}
+
+export function inputRollingOverlays(series: ChartSeries[], mode: VisualizationMode) {
+  return mode === "cumulative"
+    ? []
+    : series.filter(item => ["actions", "distance"].includes(item.key)).map(trailingRollingAverage);
 }
 
 function eventKind(event: ReportData): TimelineEventKind | null {
