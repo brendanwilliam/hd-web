@@ -1,6 +1,6 @@
-import { requireAccount } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { jsonError } from "@/lib/http";
+import { requireAccount } from "@/features/auth/server/account";
+import { jsonError } from "@/shared/http";
+import { db } from "@/shared/server/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {

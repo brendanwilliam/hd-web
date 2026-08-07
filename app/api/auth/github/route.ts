@@ -1,4 +1,4 @@
-import { appUrl } from "@/lib/auth";
+import { appUrl } from "@/features/auth/server/account";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 

@@ -1,12 +1,12 @@
-import { db } from "@/lib/db";
-import { normalizeRiotId } from "@/lib/report";
-import { profilePath } from "@/lib/profile";
-import { hydrateReportPayload, loadManualReport, reconcileReportPayload, riotRegionForGameId } from "@/lib/riot";
+import { profilePath } from "@/features/profiles/domain/paths";
+import { normalizeRiotId } from "@/features/reports/domain/payload";
+import { MouseDwellHeatmap, ReportVisualizations } from "@/features/reports/visualizations";
+import { attachRiotMatch } from "@/features/reports/server/attach-riot-match";
+import { hydrateReportPayload, loadManualReport, reconcileReportPayload, riotRegionForGameId } from "@/features/riot/server/report";
 import type { Prisma } from "@prisma/client";
 import { notFound, redirect } from "next/navigation";
-import { requireAccount } from "@/lib/auth";
-import { MouseDwellHeatmap, ReportVisualizations } from "./report-visualizations";
-import { attachRiotMatch } from "./actions";
+import { requireAccount } from "@/features/auth/server/account";
+import { db } from "@/shared/server/db";
 
 type ObjectData = Record<string, unknown>;
 const number = (value: unknown) => typeof value === "number" ? value : 0;

@@ -1,13 +1,14 @@
 "use server";
 
-import { requireAccount } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { profilePath } from "@/lib/profile";
-import { hydrateReportPayload, isRiotRegion, loadManualReport } from "@/lib/riot";
+import { requireAccount } from "@/features/auth/server/account";
+import { profilePath } from "@/features/profiles/domain/paths";
+import { hydrateReportPayload, isRiotRegion, loadManualReport } from "@/features/riot/server/report";
+import { db } from "@/shared/server/db";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 type Data = Record<string, unknown>;
+
 
 export async function attachRiotMatch(formData: FormData) {
   const account = await requireAccount();

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { normalizeRiotId, reportSchema, safeReport } from "../lib/report";
-import { hydrateReportPayload, reconcileReportPayload } from "../lib/riot";
-import { collisionSlug, profileSlug, reportPath } from "../lib/profile";
+import { collisionSlug, profileSlug, reportPath } from "@/features/profiles/domain/paths";
+import { normalizeRiotId, reportSchema, safeReport } from "@/features/reports/domain/payload";
+import { hydrateReportPayload, reconcileReportPayload } from "@/features/riot/server/report";
 
 const report = { schema_version: 4 as const, id: "8fc3f0e3-665b-43cc-a816-cdb8e22be037", completed_at: "2026-08-05T12:00:00.000Z", player: "Player #NA1" };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
