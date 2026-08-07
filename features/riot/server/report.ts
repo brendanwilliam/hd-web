@@ -53,7 +53,7 @@ export function hydrateReportPayload(payload: Data, report: ManualReport): Data 
     timeline_events: report.events,
     abilities: report.abilities,
     item_events: report.items,
-    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 2 }
+    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 4 }
   };
 }
 
@@ -84,8 +84,10 @@ export async function loadManualReport(region: RiotRegion, gameId: string, playe
 async function loadItems(version: string): Promise<Record<string, ItemData>> {
   try {
     const response = await fetch(`https://ddragon.leagueoflegends.com/cdn/${encodeURIComponent(version)}/data/en_US/item.json`, { cache: "force-cache" });
+    if (!response.ok) return {};
     const payload = data(await response.json());
-    return data(payload.data) as Record<string, ItemData>;
+    const items = data(payload.data) as Record<string, ItemData>;
+    return Object.keys(items).length ? items : {};
   } catch { return {}; }
 }
 

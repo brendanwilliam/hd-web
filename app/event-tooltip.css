@@ -8,7 +8,12 @@
 
 .event-timeline .event-dot.enemy_structures { fill: #ad8ce5; }
 .event-timeline .event-dot.team_structures { fill: #58cfca; }
+.event-timeline .event-dot.objectives.team { fill: #58cfca; }
+.event-timeline .event-dot.objectives.enemy { fill: #e87878; }
 .event-range { fill: #e6975566; }
+.event-range.team { fill: #58cfca66; }
+.event-range.enemy { fill: #e8787866; }
+.event-ability { fill: #e6edf5; font-size: 10px; font-weight: 800; pointer-events: none; }
 
 .event-tooltip {
   position: absolute;

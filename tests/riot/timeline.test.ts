@@ -15,17 +15,20 @@ describe("Riot Match-v5 timeline normalization", () => {
     const match = { info: { gameDuration: 300, participants } };
     const timeline = { info: { frames: [
       frame(0, 500),
-      frame(60_000, 900, [{ type: "CHAMPION_KILL", timestamp: 60_000, killerId: 1, victimId: 2 }, { type: "SKILL_LEVEL_UP", timestamp: 60_000, participantId: 1, skillSlot: 1 }, { type: "ITEM_PURCHASED", timestamp: 60_000, participantId: 1, itemId: 1001 }, { type: "ITEM_SOLD", timestamp: 60_000, participantId: 1, itemId: 1001 }]),
+      frame(60_000, 900, [{ type: "CHAMPION_KILL", timestamp: 60_000, killerId: 1, victimId: 2 }, { type: "LEVEL_UP", timestamp: 58_000, participantId: 1, level: 2 }, { type: "SKILL_LEVEL_UP", timestamp: 60_000, participantId: 1, skillSlot: 1 }, { type: "ITEM_PURCHASED", timestamp: 60_000, participantId: 1, itemId: 1001 }, { type: "ITEM_SOLD", timestamp: 60_000, participantId: 1, itemId: 1001 }]),
       frame(120_000, 1_400, [{ type: "ITEM_PURCHASED", timestamp: 120_000, participantId: 1, itemId: 1002 }, { type: "ITEM_UNDO", timestamp: 120_000, participantId: 1, beforeId: 1002 }, { type: "BUILDING_KILL", timestamp: 120_000, teamId: 200, buildingType: "TOWER_BUILDING", laneType: "TOP_LANE", towerType: "OUTER_TURRET" }, { type: "BUILDING_KILL", timestamp: 120_000, teamId: 100, buildingType: "INHIBITOR_BUILDING", laneType: "MID_LANE" }, { type: "ELITE_MONSTER_KILL", timestamp: 120_000, killerId: 1, monsterType: "BARON_NASHOR" }]),
       frame(150_000, 1_600, [{ type: "CHAMPION_KILL", timestamp: 135_000, killerId: 2, victimId: 3 }, { type: "CHAMPION_KILL", timestamp: 150_000, killerId: 2, victimId: 1 }]),
     ] } };
     const normalized = normalizeTimeline(match, timeline, 1, items);
     const kill = normalized.events.find(event => event.kind === "player_kill");
     expect(kill).toMatchObject({ killer_name: "Me#NA1", killer_role: "MIDDLE", victim_name: "Them#NA1", victim_role: "MIDDLE", reward_estimate_note: expect.stringContaining("Estimated") });
-    expect(normalized.events).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "skill_level", ability: "Q", level: 1 }), expect.objectContaining({ kind: "enemy_structure", structure: "Top Tier 1 turret" }), expect.objectContaining({ kind: "team_structure", structure: "Mid inhibitor" })]));
+    expect(normalized.events).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "level_up", seconds: 58, level: 2, ability: "Q", ability_rank: 1, ability_level_up_seconds: 60, ability_level_up_delay_seconds: 2 }), expect.objectContaining({ kind: "enemy_structure", structure: "Top Tier 1 turret" }), expect.objectContaining({ kind: "team_structure", structure: "Mid inhibitor" })]));
     expect(normalized.items.map(item => item.transaction_gold)).toEqual([300, -90, 1000, -1000]);
+    expect(normalized.items[0]).toMatchObject({ item_id: 1001, item_name: "Boots", item_cost: 300, item_sell_price: 90 });
     expect(normalized.samples.filter(sample => sample.seconds === 120).at(-1)).toMatchObject({ gold_spent: 210, unspent_gold: 1190 });
-    expect(normalized.events).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "objective_buff", holder_name: "Me#NA1", end_seconds: 150 }), expect.objectContaining({ kind: "objective_buff", holder_name: "Ally#NA1", end_seconds: 135 })]));
+    expect(normalized.events.find(event => event.kind === "objective")).toMatchObject({ end_seconds: 150, buff_active_seconds: 30, buff_holders: expect.arrayContaining([expect.objectContaining({ name: "Me#NA1", duration_seconds: 30 }), expect.objectContaining({ name: "Ally#NA1", duration_seconds: 15 })]) });
+    expect(normalized.events.find(event => event.kind === "team_structure")).toMatchObject({ structure_down_seconds: 180, end_seconds: 300 });
+    expect(normalized.events.find(event => event.kind === "player_death")).toMatchObject({ death_timer_seconds: 150, cumulative_dead_seconds: 150, end_seconds: 300 });
   });
 
   it("maps enriched events and all three gold series for visualizations", () => {

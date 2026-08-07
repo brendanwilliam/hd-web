@@ -32,6 +32,27 @@ const timelineRows: [TimelineEventKind, string][] = [
 ];
 
 function eventTooltip(event: TimelineEvent) {
+  if (event.event.kind === "level_up") {
+    const ability = typeof event.event.ability === "string" ? event.event.ability : "Ability point";
+    const rank = typeof event.event.ability_rank === "number" ? ` rank ${event.event.ability_rank}` : "";
+    const skillAt = numberValue(event.event.ability_level_up_seconds);
+    const delay = numberValue(event.event.ability_level_up_delay_seconds);
+    const difference = delay === null ? "unavailable" : delay === 0 ? "at the same time" : `${Math.abs(delay)}s ${delay > 0 ? "after" : "before"}`;
+    return [formatTime(event.seconds), String(event.event.detail ?? "Level up"), `Champion level: ${formatTime(event.seconds)}`, `${ability}${rank}: ${skillAt === null ? "unavailable" : formatTime(skillAt)}`, `Difference: ${difference}`].join(" · ");
+  }
+  if (event.event.kind === "item_transaction") {
+    const amount = numberValue(event.event.transaction_gold), spent = numberValue(event.event.gold_spent);
+    return [formatTime(event.seconds), `${String(event.event.transaction ?? "Item")}: ${String(event.event.item_name ?? event.event.detail ?? "Unknown item")}`, `Item ID: ${String(event.event.item_id ?? "unavailable")}`, `Gold change: ${amount === null ? "unavailable" : amount.toLocaleString()}`, `Total spent: ${spent === null ? "unavailable" : spent.toLocaleString()}`].join(" · ");
+  }
+  if (event.event.kind === "objective" && Array.isArray(event.event.buff_holders)) {
+    const holders = event.event.buff_holders.filter((holder): holder is Record<string, unknown> => !!holder && typeof holder === "object");
+    return [formatTime(event.seconds), String(event.event.detail ?? "Objective"), `Secured by: ${event.event.objective_team === "team" ? "your team" : "enemy team"}`, `Buff active: ${formatTime(numberValue(event.event.buff_active_seconds) ?? 0)}`, ...holders.map(holder => `${String(holder.name)} (${String(holder.role)}): ${formatTime(numberValue(holder.duration_seconds) ?? 0)}`)].join(" · ");
+  }
+  if (event.event.kind === "player_kill" || event.event.kind === "player_death") {
+    const timer = numberValue(event.event.death_timer_seconds), total = numberValue(event.event.cumulative_dead_seconds);
+    return [formatTime(event.seconds), String(event.event.detail ?? "Champion kill"), `Death timer: ${timer === null ? "unavailable" : formatTime(timer)}`, `Cumulative time dead: ${total === null ? "unavailable" : formatTime(total)}`, "Timer is estimated from participant-frame positions."].join(" · ");
+  }
+  if (typeof event.event.structure_down_seconds === "number") return [formatTime(event.seconds), String(event.event.detail ?? "Inhibitor destroyed"), `Inhibitor down: ${formatTime(event.event.structure_down_seconds)}`].join(" · ");
   const description = String(event.event.detail ?? event.event.type ?? event.event.category ?? event.kind);
   const values = Object.entries(event.event)
     .filter(([key, value]) =>
@@ -148,11 +169,12 @@ function EventTimeline({ events, duration, hoverTime }: { events: TimelineEvent[
             <text className="chart-label" x={margin.left - 7} y={row * 33 + 18} textAnchor="end">{label}</text>
             <line className="chart-grid" x1={margin.left} x2={width - margin.right} y1={row * 33 + 14} y2={row * 33 + 14} />
             {events.filter(event => event.kind === kind && event.endSeconds).map((event, index) => (
-              <rect key={`range-${index}`} className="event-range" x={x(event.seconds)} y={row * 33 + 9} width={Math.max(2, x(event.endSeconds!) - x(event.seconds))} height="10" />
+              <rect key={`range-${index}`} className={`event-range ${String(event.event.objective_team ?? "")}`} x={x(event.seconds)} y={row * 33 + 9} width={Math.max(2, x(event.endSeconds!) - x(event.seconds))} height="10" />
             ))}
             {groups.filter(group => group.kind === kind).map((group, index) => (
               <g key={index} className="event-group" tabIndex={0} aria-label={eventGroupTooltip(group.events)} onPointerEnter={event => showTooltip(event, group.events)} onPointerLeave={() => setTooltip(null)} onFocus={event => showTooltip(event, group.events)} onBlur={() => setTooltip(null)}>
-                <circle className={`event-dot ${kind}`} cx={x(group.seconds)} cy={row * 33 + 14} r={group.events.length > 1 ? 10 : 6} />
+                <circle className={`event-dot ${kind} ${String(group.events[0].event.objective_team ?? "")}`} cx={x(group.seconds)} cy={row * 33 + 14} r={group.events.length > 1 ? 10 : 6} />
+                {kind === "levels" && group.events.length === 1 && typeof group.events[0].event.ability === "string" && <text className="event-ability" x={x(group.seconds)} y={row * 33 + 5} textAnchor="middle">{group.events[0].event.ability}</text>}
                 {group.events.length > 1 && <text className="event-group-count" x={x(group.seconds)} y={row * 33 + 17.5} textAnchor="middle">{group.events.length}</text>}
               </g>
             ))}
