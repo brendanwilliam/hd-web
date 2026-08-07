@@ -6,6 +6,10 @@
   cursor: pointer;
 }
 
+.event-timeline .event-dot.enemy_structures { fill: #ad8ce5; }
+.event-timeline .event-dot.team_structures { fill: #58cfca; }
+.event-range { fill: #e6975566; }
+
 .event-tooltip {
   position: absolute;
   z-index: 1;

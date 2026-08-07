@@ -25,8 +25,9 @@ const timelineRows: [TimelineEventKind, string][] = [
   ["kills", "Player kills"],
   ["deaths", "Deaths"],
   ["levels", "Levels"],
-  ["items", "Purchases / completed items"],
-  ["structures", "All structures"],
+  ["items", "Item transactions"],
+  ["enemy_structures", "Enemy structures destroyed"],
+  ["team_structures", "Team structures destroyed"],
   ["objectives", "Neutral objectives"],
 ];
 
@@ -37,7 +38,7 @@ function eventTooltip(event: TimelineEvent) {
       !["id", "seconds", "detail", "type", "category"].includes(key) &&
       value !== null && value !== undefined && value !== "",
     )
-    .slice(0, 3)
+    .slice(0, 6)
     .map(([key, value]) => `${key.replaceAll("_", " ")}: ${String(value)}`);
   return [formatTime(event.seconds), description, ...values].join(" · ");
 }
@@ -146,6 +147,9 @@ function EventTimeline({ events, duration, hoverTime }: { events: TimelineEvent[
           <g key={kind}>
             <text className="chart-label" x={margin.left - 7} y={row * 33 + 18} textAnchor="end">{label}</text>
             <line className="chart-grid" x1={margin.left} x2={width - margin.right} y1={row * 33 + 14} y2={row * 33 + 14} />
+            {events.filter(event => event.kind === kind && event.endSeconds).map((event, index) => (
+              <rect key={`range-${index}`} className="event-range" x={x(event.seconds)} y={row * 33 + 9} width={Math.max(2, x(event.endSeconds!) - x(event.seconds))} height="10" />
+            ))}
             {groups.filter(group => group.kind === kind).map((group, index) => (
               <g key={index} className="event-group" tabIndex={0} aria-label={eventGroupTooltip(group.events)} onPointerEnter={event => showTooltip(event, group.events)} onPointerLeave={() => setTooltip(null)} onFocus={event => showTooltip(event, group.events)} onBlur={() => setTooltip(null)}>
                 <circle className={`event-dot ${kind}`} cx={x(group.seconds)} cy={row * 33 + 14} r={group.events.length > 1 ? 10 : 6} />

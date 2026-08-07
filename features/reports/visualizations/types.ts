@@ -21,11 +21,13 @@ export type TimelineEventKind =
   | "deaths"
   | "levels"
   | "items"
-  | "structures"
+  | "enemy_structures"
+  | "team_structures"
   | "objectives";
 
 export type TimelineEvent = {
   event: ReportData;
   kind: TimelineEventKind;
   seconds: number;
+  endSeconds?: number;
 };
