@@ -1,7 +1,7 @@
 "use client";
 
 import * as d3 from "d3";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from "react";
 import {
   formatTime,
   nearestPoint,
@@ -123,19 +123,26 @@ function ComparisonChart({ active, mode, duration }: { active: ChartSeries[]; mo
 }
 
 function EventTimeline({ events, duration }: { events: TimelineEvent[]; duration: number }) {
+  const timelineRef = useRef<SVGSVGElement>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const timelineHeight = timelineRows.length * 33 + 32;
   const x = d3.scaleLinear().domain([0, duration]).range([margin.left, width - margin.right]);
+  const showTooltip = (event: PointerEvent<SVGGElement> | FocusEvent<SVGGElement>, group: TimelineEvent[]) => {
+    const bounds = timelineRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const target = event.currentTarget.getBoundingClientRect();
+    setTooltip({ x: ((target.left + target.width / 2 - bounds.left) / bounds.width) * 100, y: target.top - bounds.top, content: eventGroupTooltip(group) });
+  };
 
   return (
     <div className="event-timeline">
-      <svg viewBox={`0 0 ${width} ${timelineHeight}`} role="img" aria-label="Match events aligned to the comparison chart game-time axis">
+      <svg ref={timelineRef} viewBox={`0 0 ${width} ${timelineHeight}`} role="img" aria-label="Match events aligned to the comparison chart game-time axis">
         {timelineRows.map(([kind, label], row) => (
           <g key={kind}>
             <text className="chart-label" x={margin.left - 7} y={row * 33 + 18} textAnchor="end">{label}</text>
             <line className="chart-grid" x1={margin.left} x2={width - margin.right} y1={row * 33 + 14} y2={row * 33 + 14} />
             {groupNearbyEvents(events, kind, x).map((group, index) => (
-              <g key={index} className="event-group" tabIndex={0}>
-                <title>{eventGroupTooltip(group.events)}</title>
+              <g key={index} className="event-group" tabIndex={0} aria-label={eventGroupTooltip(group.events)} onPointerEnter={event => showTooltip(event, group.events)} onPointerLeave={() => setTooltip(null)} onFocus={event => showTooltip(event, group.events)} onBlur={() => setTooltip(null)}>
                 <circle className={`event-dot ${kind}`} cx={x(group.seconds)} cy={row * 33 + 14} r={group.events.length > 1 ? 10 : 6} />
                 {group.events.length > 1 && <text className="event-group-count" x={x(group.seconds)} y={row * 33 + 17.5} textAnchor="middle">{group.events.length}</text>}
               </g>
@@ -149,6 +156,7 @@ function EventTimeline({ events, duration }: { events: TimelineEvent[]; duration
           </g>
         ))}
       </svg>
+      {tooltip && <aside className="event-tooltip" style={{ left: `${Math.min(78, Math.max(1, tooltip.x))}%`, top: Math.max(0, tooltip.y - 10) }}>{tooltip.content}</aside>}
     </div>
   );
 }

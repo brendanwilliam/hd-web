@@ -1,0 +1,22 @@
+.event-timeline {
+  position: relative;
+}
+
+.event-group {
+  cursor: pointer;
+}
+
+.event-tooltip {
+  position: absolute;
+  z-index: 1;
+  max-width: min(330px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid #d9b45a;
+  background: #09101af0;
+  color: #e6edf5;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: pre-line;
+}
