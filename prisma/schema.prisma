@@ -54,6 +54,10 @@ model Profile {
   accountId String
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   reports Report[]
+  matchSnapshots RiotMatchSnapshot[]
+  riotPuuid String?
+  riotRegion String?
+  riotHistoryFetchedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([accountId])
@@ -66,8 +70,22 @@ model Report {
   champion String?
   gameMode String?
   durationSeconds Int?
+  riotGameId String?
   payload Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([profileId, completedAt])
+  @@index([profileId, riotGameId])
+}
+model RiotMatchSnapshot {
+  id String @id @default(cuid())
+  profileId String
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  gameId String
+  playedAt DateTime
+  payload Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([profileId, gameId])
+  @@index([profileId, playedAt])
 }

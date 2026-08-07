@@ -1,3 +1,5 @@
+import { normalizeTimeline, type ItemData } from "@/features/riot/domain/timeline";
+
 const regions = ["americas", "europe", "asia", "sea"] as const;
 
 export type RiotRegion = (typeof regions)[number];
@@ -46,37 +48,23 @@ export function hydrateReportPayload(payload: Data, report: ManualReport): Data 
     team_kills: report.teamKills,
     enemy_team_kills: report.enemyTeamKills,
     samples: report.samples.map(sample => ({ ...sample, estimated_gold: number(sample.estimatedGold) })),
+    timeline_samples: report.samples.map(sample => ({ ...sample, estimated_gold: number(sample.estimatedGold) })),
     events: report.events,
+    timeline_events: report.events,
     abilities: report.abilities,
     item_events: report.items,
-    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true }
+    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 6 }
   };
 }
 
-export function makeManualReport(match: unknown, timeline: unknown, gameId: string, requestedPlayer = ""): ManualReport {
+export function makeManualReport(match: unknown, timeline: unknown, gameId: string, requestedPlayer = "", items: Record<string, ItemData> = {}): ManualReport {
   const info = data(data(match).info), participants = list(info.participants);
   const selected = requestedPlayer ? participants.find(player => sameRiotId(playerName(player), requestedPlayer)) : participants[0];
   if (!selected) throw new Error("Riot returned a match with no participants.");
   const participantId = number(selected.participantId), teamId = number(selected.teamId);
-  const samples: Data[] = [], events: Data[] = [], abilities: Data[] = [], items: Data[] = [];
-  const levels: Record<number, number> = {};
-  for (const [frameIndex, frame] of list(data(data(timeline).info).frames).entries()) {
-    const seconds = Math.round(number(frame.timestamp) / 1000), stats = data(data(frame.participantFrames)[String(participantId)]);
-    if (Object.keys(stats).length) samples.push({ seconds, cs: number(stats.minionsKilled) + number(stats.jungleMinionsKilled), level: number(stats.level), gold: number(stats.currentGold), estimatedGold: number(stats.totalGold) });
-    for (const [eventIndex, event] of list(frame.events).entries()) {
-      const seconds = Math.round(number(event.timestamp) / 1000), type = text(event.type);
-      let detail = "", category = "";
-      if (type === "CHAMPION_KILL" && (number(event.killerId) === participantId || number(event.victimId) === participantId)) { detail = "Champion kill"; category = "Kill"; }
-      else if (type === "ELITE_MONSTER_KILL") { detail = `${text(event.monsterType) || "Elite monster"} kill`; category = "Objective"; }
-      else if (type === "BUILDING_KILL") { detail = text(event.buildingType) === "TOWER_BUILDING" ? "Turret destroyed" : "Building destroyed"; category = "Structure"; }
-      else if (type === "LEVEL_UP" && number(event.participantId) === participantId) { detail = "Level up"; category = "Level"; }
-      else if (type === "SKILL_LEVEL_UP" && number(event.participantId) === participantId && number(event.skillSlot) >= 1 && number(event.skillSlot) <= 4) { const slot = number(event.skillSlot); abilities.push({ ability: "QWER"[slot - 1], level: levels[slot] = (levels[slot] ?? 0) + 1, seconds }); }
-      else if (type === "ITEM_PURCHASED" && number(event.participantId) === participantId) items.push({ item: `Item ${number(event.itemId)}`, seconds });
-      if (category) events.push({ id: `${frameIndex}-${eventIndex}`, seconds, detail, category });
-    }
-  }
+  const normalized = normalizeTimeline(match, timeline, participantId, items);
   const final = { kills: number(selected.kills), deaths: number(selected.deaths), assists: number(selected.assists), cs: number(selected.totalMinionsKilled) + number(selected.neutralMinionsKilled), gold: number(selected.goldEarned), level: number(selected.champLevel) };
-  return { player: playerName(selected), champion: text(selected.championName), role: text(selected.teamPosition) || "Unavailable", outcome: selected.win === true ? "Victory" : "Defeat", gameId, gameMode: text(info.gameMode), map: mapName(number(info.mapId)), completedAt: new Date(number(info.gameCreation)).toISOString(), durationSeconds: Math.round(number(info.gameDuration)), teamGold: participants.filter(player => number(player.teamId) === teamId).reduce((sum, player) => sum + number(player.goldEarned), 0), enemyTeamGold: participants.filter(player => number(player.teamId) !== teamId).reduce((sum, player) => sum + number(player.goldEarned), 0), teamKills: participants.filter(player => number(player.teamId) === teamId).reduce((sum, player) => sum + number(player.kills), 0), enemyTeamKills: participants.filter(player => number(player.teamId) !== teamId).reduce((sum, player) => sum + number(player.kills), 0), final, samples, events, abilities, items, participants: participants.map(player => ({ riotId: playerName(player), champion: text(player.championName) })) };
+  return { player: playerName(selected), champion: text(selected.championName), role: text(selected.teamPosition) || "Unavailable", outcome: selected.win === true ? "Victory" : "Defeat", gameId, gameMode: text(info.gameMode), map: mapName(number(info.mapId)), completedAt: new Date(number(info.gameCreation)).toISOString(), durationSeconds: Math.round(number(info.gameDuration)), teamGold: participants.filter(player => number(player.teamId) === teamId).reduce((sum, player) => sum + number(player.goldEarned), 0), enemyTeamGold: participants.filter(player => number(player.teamId) !== teamId).reduce((sum, player) => sum + number(player.goldEarned), 0), teamKills: participants.filter(player => number(player.teamId) === teamId).reduce((sum, player) => sum + number(player.kills), 0), enemyTeamKills: participants.filter(player => number(player.teamId) !== teamId).reduce((sum, player) => sum + number(player.kills), 0), final, ...normalized, participants: participants.map(player => ({ riotId: playerName(player), champion: text(player.championName) })) };
 }
 
 export async function loadManualReport(region: RiotRegion, gameId: string, player = "") {
@@ -88,7 +76,32 @@ export async function loadManualReport(region: RiotRegion, gameId: string, playe
   const endpoint = `https://${region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(gameId)}`;
   const fetchRiot = async (url: string) => { const response = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" }); if (!response.ok) throw new Error(`Riot API request failed (HTTP ${response.status}).`); return response.json(); };
   const [match, timeline] = await Promise.all([fetchRiot(endpoint), fetchRiot(`${endpoint}/timeline`)]);
-  return makeManualReport(match, timeline, gameId, player);
+  const version = dataDragonVersion(text(data(data(match).info).gameVersion));
+  const items = version ? await loadItems(version) : {};
+  return makeManualReport(match, timeline, gameId, player, items);
+}
+
+export const dataDragonVersion = (gameVersion: string) => gameVersion.match(/\d+\.\d+\.\d+/)?.[0] ?? "";
+
+async function loadItems(version: string): Promise<Record<string, ItemData>> {
+  const direct = await fetchItems(version);
+  if (direct) return direct;
+  try {
+    const response = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: "force-cache" });
+    const versions = response.ok ? await response.json() : [];
+    const [major, minor] = version.split(".");
+    const fallback = Array.isArray(versions) ? versions.find(value => typeof value === "string" && value.startsWith(`${major}.${minor}.`)) : undefined;
+    return fallback ? await fetchItems(fallback) ?? {} : {};
+  } catch { return {}; }
+}
+
+async function fetchItems(version: string): Promise<Record<string, ItemData> | null> {
+  try {
+    const response = await fetch(`https://ddragon.leagueoflegends.com/cdn/${encodeURIComponent(version)}/data/en_US/item.json`, { cache: "force-cache" });
+    if (!response.ok) return null;
+    const items = data(data(await response.json()).data) as Record<string, ItemData>;
+    return Object.keys(items).length ? items : null;
+  } catch { return null; }
 }
 
 export type ReconciliationStatus = "matched" | "not_found" | "ambiguous" | "error";
