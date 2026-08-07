@@ -1,6 +1,23 @@
 .event-timeline {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
+
+.event-timeline .report-panel-heading { position: sticky; top: 0; z-index: 1; background: #101722; }
+.timeline-mode,.event-legend button { margin: 0; padding: 5px 9px; color: #9aa9b9; border: 1px solid #3b4c61; background: #172334; }
+.timeline-mode[aria-pressed="true"],.event-legend button.active { color: #e6edf5; border-color: #d9b45a; }
+.event-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.event-legend button { display: flex; align-items: center; gap: 5px; }
+.event-legend .event-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.event-legend .event-dot.kills { background: #d9b45a; }
+.event-legend .event-dot.deaths { background: #e87878; }
+.event-legend .event-dot.levels { background: #9ad17b; }
+.event-legend .event-dot.items { background: #72b8ef; }
+.event-legend .event-dot.team_structures { background: #58cfca; }
+.event-legend .event-dot.enemy_structures { background: #ad8ce5; }
+.event-legend .event-dot.objectives { background: #e69755; }
+.chart-cursor { stroke: #e87878; }
 
 .event-group {
   cursor: pointer;

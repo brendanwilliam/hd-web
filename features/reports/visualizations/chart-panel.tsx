@@ -6,7 +6,7 @@ import { ComparisonChart } from "@/features/reports/visualizations/comparison-ch
 import { InputScatterPlot } from "@/features/reports/visualizations/input-scatter-plot";
 import type { ReportData, VisualizationGroup, VisualizationMode } from "@/features/reports/visualizations/types";
 
-export function ChartPanel({ payload, group, duration, onHoverTime }: { payload: ReportData; group: VisualizationGroup; duration: number; onHoverTime: (time: number | null) => void }) {
+export function ChartPanel({ payload, group, duration, onHoverTime, onPreviewTime }: { payload: ReportData; group: VisualizationGroup; duration: number; onHoverTime: (time: number | null) => void; onPreviewTime?: (time: number | null) => void }) {
   const [mode, setMode] = useState<VisualizationMode>("cumulative");
   const definition = useMemo(() => reportSeriesGroups(payload, mode).find(item => item.key === group)!, [group, mode, payload]);
   const inputPoints = useMemo(() => inputScatterPoints(payload), [payload]);
@@ -19,7 +19,7 @@ export function ChartPanel({ payload, group, duration, onHoverTime }: { payload:
     {!inputPanel && <div className="report-legend" aria-label={`${definition.label} series`}>
       {definition.series.map(item => <button key={item.key} className={enabled === null || enabled.has(item.key) ? "active" : ""} aria-pressed={enabled === null || enabled.has(item.key)} onClick={() => setEnabled(previous => { const next = new Set(previous ?? definition.series.map(value => value.key)); next.has(item.key) ? next.delete(item.key) : next.add(item.key); return next; })}><i style={{ background: item.color }} />{item.label}</button>)}
     </div>}
-    {inputPanel ? inputPoints.length ? <InputScatterPlot points={inputPoints} onHoverTime={onHoverTime} /> : <p className="report-note">Input samples with both Actions and Mouse distance are unavailable for this report.</p> : active.length ? <ComparisonChart active={active} mode={mode} duration={duration} label={definition.label} onHoverTime={onHoverTime} /> : <p className="report-note">Select a series to compare recorded data.</p>}
+    {inputPanel ? inputPoints.length ? <InputScatterPlot points={inputPoints} onHoverTime={onHoverTime} onPreviewTime={onPreviewTime ?? onHoverTime} /> : <p className="report-note">Input samples with both Actions and Mouse distance are unavailable for this report.</p> : active.length ? <ComparisonChart active={active} mode={mode} duration={duration} label={definition.label} onHoverTime={onHoverTime} /> : <p className="report-note">Select a series to compare recorded data.</p>}
     <p className="report-note">{definition.description} Each series is independently normalized to 0–100; exact sample intervals are used without interpolation.</p>
   </section>;
 }
