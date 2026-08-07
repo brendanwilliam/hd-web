@@ -7,7 +7,7 @@ import type {
   VisualizationMode,
 } from "@/features/reports/visualizations/types";
 
-const colors = ["#d9b45a", "#72b8ef", "#e87878", "#9ad17b", "#ad8ce5", "#58cfca", "#e69755"];
+const colors = ["#d9b45a", "#72b8ef", "#e87878", "#9ad17b", "#ad8ce5", "#f08ac3", "#58cfca", "#e69755"];
 
 export const numberValue = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -65,6 +65,7 @@ export function reportSeries(payload: ReportData, mode: VisualizationMode): Char
     ["gold_earned", "Gold earned"],
     ["experience", "Experience"],
     ["gold_spent", "Gold spent", true],
+    ["unspent_gold", "Unspent gold", true],
     ["damage_to_enemy_champions", "Champion damage"],
     ["damage_to_objectives", "Objective damage"],
   ];
@@ -79,14 +80,14 @@ export function reportSeries(payload: ReportData, mode: VisualizationMode): Char
     {
       key: "actions",
       label: "Actions",
-      color: colors[5],
+      color: colors[6],
       unit: mode === "cumulative" ? "" : " APM",
       points: applyMode(cumulativeValues(input, "actions"), mode, 60),
     },
     {
       key: "distance",
       label: "Mouse distance",
-      color: colors[6],
+      color: colors[7],
       unit: mode === "cumulative" ? " px" : " px/s",
       points: applyMode(cumulativeValues(input, "mouse_distance_pixels"), mode),
     },
@@ -94,10 +95,18 @@ export function reportSeries(payload: ReportData, mode: VisualizationMode): Char
 }
 
 function eventKind(event: ReportData): TimelineEventKind | null {
+  const kind = String(event.kind ?? "");
+  if (kind === "player_kill") return "kills";
+  if (kind === "player_death") return "deaths";
+  if (["skill_level", "level_up"].includes(kind)) return "levels";
+  if (kind === "item_transaction") return "items";
+  if (kind === "team_structure") return "team_structures";
+  if (kind === "enemy_structure") return "enemy_structures";
+  if (["objective", "objective_buff"].includes(kind)) return "objectives";
   const value = `${event.type ?? ""} ${event.category ?? ""} ${event.detail ?? ""}`.toLowerCase();
   if (value.includes("level")) return "levels";
   if (value.includes("item")) return "items";
-  if (/tower|turret|building/.test(value)) return "structures";
+  if (/tower|turret|building/.test(value)) return "team_structures";
   if (/dragon|baron|herald|voidgrub|scuttler|objective/.test(value)) return "objectives";
   if (value.includes("kill")) return event.actor === "enemy" || event.victim === "player" ? "deaths" : "kills";
   return null;
@@ -110,7 +119,8 @@ export function timelineEvents(payload: ReportData): TimelineEvent[] {
   return source.flatMap(event => {
     const kind = eventKind(event);
     const seconds = numberValue(event.seconds);
-    return kind && seconds !== null ? [{ event, kind, seconds }] : [];
+    const endSeconds = numberValue(event.end_seconds);
+    return kind && seconds !== null ? [{ event, kind, seconds, ...(endSeconds !== null && endSeconds > seconds ? { endSeconds } : {}) }] : [];
   });
 }
 
