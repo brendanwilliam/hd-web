@@ -1,6 +1,6 @@
-import { appUrl } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { setSession } from "@/lib/session";
+import { appUrl } from "@/features/auth/server/account";
+import { setSession } from "@/features/auth/server/session";
+import { db } from "@/shared/server/db";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 

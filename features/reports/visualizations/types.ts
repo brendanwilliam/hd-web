@@ -1,0 +1,31 @@
+export type ReportData = Record<string, unknown>;
+
+export type VisualizationMode = "cumulative" | "rate" | "acceleration";
+
+export type ChartPoint = {
+  x: number;
+  y: number;
+};
+
+export type ChartSeries = {
+  key: string;
+  label: string;
+  color: string;
+  points: ChartPoint[];
+  step?: boolean;
+  unit?: string;
+};
+
+export type TimelineEventKind =
+  | "kills"
+  | "deaths"
+  | "levels"
+  | "items"
+  | "structures"
+  | "objectives";
+
+export type TimelineEvent = {
+  event: ReportData;
+  kind: TimelineEventKind;
+  seconds: number;
+};

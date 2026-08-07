@@ -1,5 +1,5 @@
-import { requireAccount } from "@/lib/auth";
-import { approveDevice } from "./actions";
+import { requireAccount } from "@/features/auth/server/account";
+import { approveDevice } from "@/features/devices/server/approve-device";
 import { LinkStatus } from "./link-status";
 import Link from "next/link";
 

@@ -1,8 +1,9 @@
-import { db } from "@/lib/db";
-import { sessionAccountId } from "@/lib/session";
+import { db } from "@/shared/server/db";
+import { sessionAccountId } from "@/features/auth/server/session";
 
 export async function requireAccount() {
   const id = await sessionAccountId();
   return id ? db.account.findUnique({ where: { id } }) : null;
 }
+
 export const appUrl = () => (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");

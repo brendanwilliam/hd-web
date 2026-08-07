@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@/shared/server/db";
 import { NextResponse } from "next/server";
 
 // Configure this endpoint as a daily authenticated Vercel cron job. Revoked token hashes are
