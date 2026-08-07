@@ -42,7 +42,7 @@ export default async function ReportPage({ params }: { params: Promise<{ riotId:
           completedAt: new Date(String(hydrated.completed_at)),
           champion: typeof hydrated.champion === "string" ? hydrated.champion : null,
           gameMode: typeof hydrated.game_mode === "string" ? hydrated.game_mode : null,
-          durationSeconds: typeof hydrated.duration_seconds === "number" ? hydrated.duration_seconds : null,
+          durationSeconds: typeof hydrated.duration_seconds === "number" ? hydrated.duration_seconds : null, riotGameId: typeof hydrated.game_id === "string" ? hydrated.game_id : null,
           payload: hydrated as Prisma.InputJsonValue
         }
       });
@@ -60,7 +60,7 @@ export default async function ReportPage({ params }: { params: Promise<{ riotId:
         completedAt: new Date(String(hydrated.completed_at)),
         champion: typeof hydrated.champion === "string" ? hydrated.champion : null,
         gameMode: typeof hydrated.game_mode === "string" ? hydrated.game_mode : null,
-        durationSeconds: typeof hydrated.duration_seconds === "number" ? hydrated.duration_seconds : null,
+        durationSeconds: typeof hydrated.duration_seconds === "number" ? hydrated.duration_seconds : null, riotGameId: typeof hydrated.game_id === "string" ? hydrated.game_id : null,
         payload: hydrated as Prisma.InputJsonValue
       }
     });
