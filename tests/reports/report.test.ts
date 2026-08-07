@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { collisionSlug, profileSlug, reportPath } from "@/features/profiles/domain/paths";
 import { normalizeRiotId, reportSchema, safeReport } from "@/features/reports/domain/payload";
-import { hydrateReportPayload, reconcileReportPayload } from "@/features/riot/server/report";
+import { dataDragonVersion, hydrateReportPayload, reconcileReportPayload } from "@/features/riot/server/report";
 
 const report = { schema_version: 4 as const, id: "8fc3f0e3-665b-43cc-a816-cdb8e22be037", completed_at: "2026-08-05T12:00:00.000Z", player: "Player #NA1" };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
@@ -12,10 +12,11 @@ describe("report validation", () => {
   it("accepts full-length input telemetry", () => expect(reportSchema.safeParse({ ...report, input_samples: Array.from({ length: 3_600 }, (_, seconds) => ({ seconds, actions: 0 })) }).success).toBe(true));
   it("hydrates a local report with Riot timeline data", () => {
     const hydrated = hydrateReportPayload({ ...report, samples: [{ seconds: 0, gold: 500 }] }, { player: "Player #NA1", champion: "Ahri", role: "MIDDLE", outcome: "Victory", gameId: "NA1_1", gameMode: "CLASSIC", map: "Summoner's Rift", completedAt: report.completed_at, durationSeconds: 1200, teamGold: 100, enemyTeamGold: 90, teamKills: 5, enemyTeamKills: 4, final: { kills: 1, deaths: 2, assists: 3, cs: 40, gold: 9000, level: 12 }, samples: [{ seconds: 0, estimatedGold: 500 }], events: [], abilities: [], items: [], participants: [] });
-    expect(hydrated.enrichment).toMatchObject({ riot_match_v5: true });
+    expect(hydrated.enrichment).toMatchObject({ riot_match_v5: true, riot_match_v5_timeline_version: 6 });
     expect(hydrated.samples).toEqual([{ seconds: 0, estimatedGold: 500, estimated_gold: 500 }]);
   });
   it("rejects unsupported schema versions", () => expect(reportSchema.safeParse({ ...report, schema_version: 3 }).success).toBe(false));
+  it("extracts a Data Dragon patch from Riot's full game version", () => expect(dataDragonVersion("16.15.1.230.9486")).toBe("16.15.1"));
   it("normalizes Riot IDs and removes key-shaped fields", () => { expect(normalizeRiotId(" Player #NA1 ")).toBe("player #na1"); expect(safeReport({ ...report, samples: [], events: [], input_samples: [], hexbins: [], chapters: [], keys: ["A"] }).keys).toBeUndefined(); });
   it("uses readable, stable profile paths", () => {
     expect(profileSlug("Squidbird#in4K")).toBe("squidbird-in4k");

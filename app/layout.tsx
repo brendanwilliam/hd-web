@@ -1,4 +1,6 @@
 import "./styles.css";
+import "./profile-styles.css";
+import "./event-tooltip.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 export const metadata: Metadata = { title: "Handscheck", description: "Privacy-safe League of Legends input recaps" };

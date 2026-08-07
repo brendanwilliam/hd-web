@@ -1,0 +1,70 @@
+.event-timeline {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.event-timeline .report-panel-heading { align-items: center; background: #101722; }
+.timeline-mode,.event-legend button { margin: 0; padding: 5px 9px; color: #9aa9b9; border: 1px solid #3b4c61; background: #172334; }
+.timeline-mode[aria-pressed="true"],.event-legend button.active { color: #e6edf5; border-color: #d9b45a; }
+.event-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.event-legend button { display: flex; align-items: center; gap: 5px; }
+.event-legend .event-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.event-legend .event-dot.kills { background: #d9b45a; }
+.event-legend .event-dot.deaths { background: #e87878; }
+.event-legend .event-dot.levels { background: #9ad17b; }
+.event-legend .event-dot.items { background: #72b8ef; }
+.event-legend .event-dot.team_structures { background: #58cfca; }
+.event-legend .event-dot.enemy_structures { background: #ad8ce5; }
+.event-legend .event-dot.objectives { background: #e69755; }
+.chart-cursor { stroke: #e87878; }
+
+.timeline-tools,.event-transport { display: flex; align-items: center; gap: 6px; }
+.event-transport { color: #9aa9b9; font-size: 12px; }
+.event-transport strong { color: #e6edf5; font-size: 21px; font-variant-numeric: tabular-nums; }
+.event-transport button { margin: 0; padding: 4px 7px; color: #e6edf5; border: 1px solid #3b4c61; background: #172334; }
+
+.report-preview-switcher { display: flex; align-items: center; gap: 7px; margin: 1rem 0 -1rem; color: #9aa9b9; font-size: 12px; }
+.report-preview-switcher button { margin: 0; padding: 5px 9px; color: #9aa9b9; border: 1px solid #3b4c61; background: #172334; }
+.report-preview-switcher button.active { color: #e6edf5; border-color: #d9b45a; }
+.report-preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.report-preview-grid .report-panel { min-width: 0; }
+
+@media (max-width: 1000px) {
+  .report-preview-grid { grid-template-columns: 1fr; }
+  .event-timeline .report-panel-heading { align-items: flex-start; flex-direction: column; }
+  .timeline-tools { flex-wrap: wrap; }
+}
+
+.event-group {
+  cursor: pointer;
+}
+
+.event-timeline .event-dot.enemy_structures { fill: #ad8ce5; }
+.event-timeline .event-dot.team_structures { fill: #58cfca; }
+.event-timeline .event-dot.objectives.team { fill: #58cfca; }
+.event-timeline .event-dot.objectives.enemy { fill: #e87878; }
+.event-range { fill: #e6975566; }
+.event-range.team { fill: #58cfca66; }
+.event-range.enemy { fill: #e8787866; }
+.event-ability { fill: #e6edf5; font-size: 10px; font-weight: 800; pointer-events: none; }
+
+.report-hero { grid-template-columns: minmax(0, 1fr) auto 36px; }
+.report-refresh { align-self: start; margin: 0; }
+.report-refresh button { width: 32px; height: 32px; margin: 0; padding: 0; border: 1px solid #3b4c61; background: #172334; color: #d9b45a; font-size: 22px; line-height: 1; }
+.report-refresh button:hover, .report-refresh button:focus-visible { border-color: #d9b45a; }
+
+.event-tooltip {
+  position: absolute;
+  z-index: 1;
+  max-width: min(330px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid #d9b45a;
+  background: #09101af0;
+  color: #e6edf5;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: pre-line;
+}
