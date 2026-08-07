@@ -25,6 +25,7 @@ describe("Riot Match-v5 timeline normalization", () => {
     expect(normalized.events).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "level_up", seconds: 58, level: 2, ability: "Q", ability_rank: 1, ability_level_up_seconds: 60, ability_level_up_delay_seconds: 2 }), expect.objectContaining({ kind: "enemy_structure", structure: "Top Tier 1 turret" }), expect.objectContaining({ kind: "team_structure", structure: "Mid inhibitor" })]));
     expect(normalized.items.map(item => item.transaction_gold)).toEqual([300, -90, 1000, -1000]);
     expect(normalized.items[0]).toMatchObject({ item_id: 1001, item_name: "Boots", item_cost: 300, item_sell_price: 90 });
+    expect(normalizeTimeline(match, timeline, 1).items[0]).toMatchObject({ item_id: 1001, transaction_gold: undefined, price_available: false });
     expect(normalized.samples.filter(sample => sample.seconds === 120).at(-1)).toMatchObject({ gold_spent: 210, unspent_gold: 1190 });
     expect(normalized.events.find(event => event.kind === "objective")).toMatchObject({ end_seconds: 150, buff_active_seconds: 30, buff_holders: expect.arrayContaining([expect.objectContaining({ name: "Me#NA1", duration_seconds: 30 }), expect.objectContaining({ name: "Ally#NA1", duration_seconds: 15 })]) });
     expect(normalized.events.find(event => event.kind === "team_structure")).toMatchObject({ structure_down_seconds: 180, end_seconds: 300 });

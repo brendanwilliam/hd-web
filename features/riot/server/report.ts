@@ -53,7 +53,7 @@ export function hydrateReportPayload(payload: Data, report: ManualReport): Data 
     timeline_events: report.events,
     abilities: report.abilities,
     item_events: report.items,
-    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 4 }
+    enrichment: { ...enrichment, riot_match_v5: true, riot_match_v5_timeline: true, riot_match_v5_timeline_version: 5 }
   };
 }
 
