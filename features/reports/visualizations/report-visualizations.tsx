@@ -42,7 +42,7 @@ function eventTooltip(event: TimelineEvent) {
   }
   if (event.event.kind === "item_transaction") {
     const amount = numberValue(event.event.transaction_gold), spent = numberValue(event.event.gold_spent);
-    return [formatTime(event.seconds), `${String(event.event.transaction ?? "Item")}: ${String(event.event.item_name ?? event.event.detail ?? "Unknown item")}`, `Item ID: ${String(event.event.item_id ?? "unavailable")}`, `Gold change: ${amount === null ? "unavailable" : amount.toLocaleString()}`, `Total spent: ${spent === null ? "unavailable" : spent.toLocaleString()}`].join(" · ");
+    return [formatTime(event.seconds), `${String(event.event.transaction ?? "Item")}: ${String(event.event.item_name ?? event.event.detail ?? "Unknown item")}`, `Item ID: ${String(event.event.item_id ?? "unavailable")}`, `Gold change: ${amount === null ? "price unavailable" : amount.toLocaleString()}`, `Total spent: ${spent === null ? "unavailable" : spent.toLocaleString()}`].join(" · ");
   }
   if (event.event.kind === "objective" && Array.isArray(event.event.buff_holders)) {
     const holders = event.event.buff_holders.filter((holder): holder is Record<string, unknown> => !!holder && typeof holder === "object");

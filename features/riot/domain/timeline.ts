@@ -78,10 +78,10 @@ export function normalizeTimeline(match: unknown, timeline: unknown, selectedId:
   const levelUps: { id: string; at: number; level: number }[] = [], skillUps: { id: string; at: number; ability: string; rank: number }[] = [];
   const kills: { id: string; at: number; victim: number }[] = [];
   let spent = 0;
-  const addTransaction = (event: Data, index: string, change: number, detail: Data) => {
-    spent += change;
+  const addTransaction = (event: Data, index: string, change: number | undefined, detail: Data) => {
+    if (change !== undefined) spent += change;
     const gold = frameStats(frames, selectedId, number(event.timestamp)).before.totalGold;
-    const record = { id: index, seconds: seconds(event.timestamp), kind: "item_transaction", category: "Item", detail: text(detail.item_name), transaction_gold: change, gold_spent: spent, ...detail };
+    const record = { id: index, seconds: seconds(event.timestamp), kind: "item_transaction", category: "Item", detail: text(detail.item_name), transaction_gold: change, price_available: change !== undefined, gold_spent: spent, ...detail };
     events.push(record); itemLedger.push(record); transactionSamples.push({ seconds: seconds(event.timestamp), gold_earned: number(gold), gold_spent: spent, unspent_gold: number(gold) - spent });
   };
   for (const [frameIndex, frame] of frames.entries()) {
@@ -95,9 +95,9 @@ export function normalizeTimeline(match: unknown, timeline: unknown, selectedId:
         const slot = number(event.skillSlot);
         if (slot >= 1 && slot <= 4) { const ability = "QWER"[slot - 1], rank = levels[slot] = (levels[slot] ?? 0) + 1; const record = { id, seconds: seconds(at), ability, level: rank }; abilities.push(record); skillUps.push({ id, at, ability, rank }); }
       } else if (type === "LEVEL_UP" && number(event.participantId) === selectedId) levelUps.push({ id, at, level: number(event.level) });
-      else if (type === "ITEM_PURCHASED" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); const cost = details.item_cost; if (cost !== undefined) transactions.push({ itemId: number(event.itemId), spent: cost }); addTransaction(event, id, cost ?? 0, { ...details, transaction: "Purchased" }); }
-      else if (type === "ITEM_SOLD" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); addTransaction(event, id, -(details.item_sell_price ?? 0), { ...details, transaction: "Sold" }); }
-      else if (type === "ITEM_UNDO" && number(event.participantId) === selectedId) { const beforeId = number(event.beforeId); let transactionIndex = -1; for (let index = transactions.length - 1; index >= 0; index--) if (transactions[index].itemId === beforeId) { transactionIndex = index; break; } const transaction = transactionIndex >= 0 ? transactions.splice(transactionIndex, 1)[0] : undefined; const details = itemDetails(beforeId, items); addTransaction(event, id, -(transaction?.spent ?? 0), { ...details, transaction: "Undo" }); }
+      else if (type === "ITEM_PURCHASED" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); const cost = details.item_cost; if (cost !== undefined) transactions.push({ itemId: number(event.itemId), spent: cost }); addTransaction(event, id, cost, { ...details, transaction: "Purchased" }); }
+      else if (type === "ITEM_SOLD" && number(event.participantId) === selectedId) { const details = itemDetails(number(event.itemId), items); addTransaction(event, id, details.item_sell_price === undefined ? undefined : -details.item_sell_price, { ...details, transaction: "Sold" }); }
+      else if (type === "ITEM_UNDO" && number(event.participantId) === selectedId) { const beforeId = number(event.beforeId); let transactionIndex = -1; for (let index = transactions.length - 1; index >= 0; index--) if (transactions[index].itemId === beforeId) { transactionIndex = index; break; } const transaction = transactionIndex >= 0 ? transactions.splice(transactionIndex, 1)[0] : undefined; const details = itemDetails(beforeId, items); addTransaction(event, id, transaction ? -transaction.spent : undefined, { ...details, transaction: "Undo" }); }
       else if (type === "BUILDING_KILL") { const destroyedTeam = number(event.teamId), team = destroyedTeam === selectedTeam ? "enemy" : "team", structure = structureLabel(event), inhibitor = text(event.buildingType) === "INHIBITOR_BUILDING", end = inhibitor ? Math.min(at + 300_000, matchEnd) : at; events.push({ id, seconds: seconds(at), ...(inhibitor ? { end_seconds: seconds(end), structure_down_seconds: seconds(end) - seconds(at) } : {}), kind: team === "team" ? "enemy_structure" : "team_structure", category: "Structure", team, detail: `${structure} destroyed`, structure }); }
       else if (type === "ELITE_MONSTER_KILL") { const killer = player(participants, number(event.killerId)); events.push({ id, seconds: seconds(at), kind: "objective", category: "Objective", detail: objectiveLabel(event), objective: objectiveLabel(event), objective_team: killer?.teamId === selectedTeam ? "team" : "enemy", ...person("killer", killer) }); }
     }
