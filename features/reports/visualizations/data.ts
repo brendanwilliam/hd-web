@@ -2,6 +2,7 @@ import type {
   ChartPoint,
   ChartSeries,
   ChartSeriesGroup,
+  InputScatterPoint,
   ReportData,
   TimelineEvent,
   TimelineEventKind,
@@ -88,13 +89,13 @@ export function reportSeriesGroups(payload: ReportData, mode: VisualizationMode)
     {
       key: "input",
       label: "Input",
-      description: "Raw input lines are solid. Dashed lines show a trailing 60-second rolling average in Velocity and Acceleration views.",
+      description: "Each point pairs a 3-second rolling Actions-per-minute value with mouse velocity in cm/s. The top and right histograms show their individual distributions.",
       series: [
         {
           key: "actions",
           label: "Actions",
           color: colors[6],
-          unit: unit(mode, "", " APM", " APM/s"),
+          unit: unit(mode, " actions", " APM", " APM/s"),
           points: applyMode(cumulativeValues(input, "actions"), mode, true),
         },
         {
@@ -134,22 +135,20 @@ export function reportSeries(payload: ReportData, mode: VisualizationMode): Char
   return reportSeriesGroups(payload, mode).flatMap(group => group.series);
 }
 
-export function trailingRollingAverage(series: ChartSeries, seconds = 60): ChartSeries {
-  return {
-    ...series,
-    key: `${series.key}-rolling-average`,
-    label: `${series.label} · ${seconds}s rolling average`,
-    points: series.points.map(point => {
-      const points = series.points.filter(candidate => candidate.x >= point.x - seconds && candidate.x <= point.x);
-      return { x: point.x, y: points.reduce((total, candidate) => total + candidate.y, 0) / points.length };
-    }),
-  };
-}
-
-export function inputRollingOverlays(series: ChartSeries[], mode: VisualizationMode) {
-  return mode === "cumulative"
-    ? []
-    : series.filter(item => ["actions", "distance"].includes(item.key)).map(trailingRollingAverage);
+export function inputScatterPoints(payload: ReportData): InputScatterPoint[] {
+  const dpi = Math.max(1, numberValue(payload.dpi) ?? 800);
+  const samples = dataItems(payload.input_samples).flatMap(sample => {
+    const seconds = numberValue(sample.seconds), actions = numberValue(sample.actions), distance = numberValue(sample.mouse_distance_pixels);
+    return seconds === null || actions === null || distance === null ? [] : [{ seconds, actions, distance }];
+  }).sort((first, second) => first.seconds - second.seconds);
+  return samples.slice(1).flatMap((sample, index) => {
+    const prior = samples[index], elapsed = sample.seconds - prior.seconds;
+    if (elapsed <= 0) return [];
+    const window = samples.filter(candidate => candidate.seconds >= sample.seconds - 3 && candidate.seconds <= sample.seconds);
+    const windowElapsed = sample.seconds - window[0].seconds;
+    if (windowElapsed <= 0) return [];
+    return [{ seconds: sample.seconds, apm: (window.reduce((total, candidate) => total + candidate.actions, 0) / windowElapsed) * 60, velocityCms: (sample.distance / elapsed) * 2.54 / dpi }];
+  });
 }
 
 function eventKind(event: ReportData): TimelineEventKind | null {

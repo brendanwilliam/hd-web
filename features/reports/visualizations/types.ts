@@ -7,6 +7,12 @@ export type ChartPoint = {
   y: number;
 };
 
+export type InputScatterPoint = {
+  seconds: number;
+  apm: number;
+  velocityCms: number;
+};
+
 export type ChartSeries = {
   key: string;
   label: string;
