@@ -16,6 +16,15 @@ export type ChartSeries = {
   unit?: string;
 };
 
+export type VisualizationGroup = "input" | "economy" | "combat";
+
+export type ChartSeriesGroup = {
+  key: VisualizationGroup;
+  label: string;
+  description: string;
+  series: ChartSeries[];
+};
+
 export type TimelineEventKind =
   | "kills"
   | "deaths"
