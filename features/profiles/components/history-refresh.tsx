@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { initialHistoryActionState, refreshHistoryAction } from "@/features/profiles/server/actions";
+import { initialHistoryActionState } from "@/features/profiles/domain/history-action-state";
+import { refreshHistoryAction } from "@/features/profiles/server/actions";
 
 export function HistoryRefresh({ profileId, slug, fetchedAt }: { profileId: string; slug: string; fetchedAt: Date | null }) {
   const [state, action, pending] = useActionState(refreshHistoryAction, initialHistoryActionState);

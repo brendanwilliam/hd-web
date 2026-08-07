@@ -1,11 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { HistoryActionState } from "@/features/profiles/domain/history-action-state";
 import { profilePath } from "@/features/profiles/domain/paths";
 import { refreshProfileHistory } from "@/features/profiles/server/history";
-
-export type HistoryActionState = { status: "idle" | "updated" | "cooldown" | "error"; message: string };
-export const initialHistoryActionState: HistoryActionState = { status: "idle", message: "" };
 
 export async function refreshHistoryAction(_previous: HistoryActionState, formData: FormData): Promise<HistoryActionState> {
   const profileId = String(formData.get("profileId") ?? "");
