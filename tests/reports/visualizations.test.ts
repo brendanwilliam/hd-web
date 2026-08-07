@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inputRollingOverlays, reportSeriesGroups, trailingRollingAverage } from "@/features/reports/visualizations/data";
+import { inputRollingOverlays, normalizedPoints, reportSeriesGroups, trailingRollingAverage } from "@/features/reports/visualizations/data";
 
 const pointValues = (payload: object, group: "input" | "economy" | "combat", key: string, mode: "cumulative" | "rate" | "acceleration") => reportSeriesGroups(payload, mode).find(item => item.key === group)!.series.find(item => item.key === key)!;
 
@@ -32,6 +32,14 @@ describe("report visualization data", () => {
     expect(pointValues(payload, "economy", "experience", "acceleration")).toMatchObject({ unit: " XP/min²", points: [{ x: 90, y: 0 }] });
     expect(pointValues(payload, "combat", "damage_to_enemy_champions", "rate")).toMatchObject({ unit: " damage/min", points: [{ x: 30, y: 200 }, { x: 90, y: 300 }] });
     expect(pointValues(payload, "combat", "damage_to_objectives", "acceleration")).toMatchObject({ unit: " damage/min²", points: [{ x: 90, y: 50 }] });
+  });
+
+  it("uses total earned gold as the shared scale for cumulative gold statistics", () => {
+    const goldEarned = pointValues(payload, "economy", "gold_earned", "cumulative");
+    const unspent = pointValues({ timeline_samples: [{ seconds: 0, gold_earned: 500, unspent_gold: 500 }, { seconds: 30, gold_earned: 800, unspent_gold: 700 }, { seconds: 60, gold_earned: 1_000, unspent_gold: 200 }] }, "economy", "unspent_gold", "cumulative");
+    expect(goldEarned.normalization).toEqual({ minimum: 0, maximum: 1_400 });
+    expect(unspent.normalization).toEqual({ minimum: 0, maximum: 1_000 });
+    expect(normalizedPoints(unspent).map(point => point.normalized)).toEqual([50, 70, 20]);
   });
 
   it("creates 60-second trailing input overlays only outside cumulative mode", () => {
