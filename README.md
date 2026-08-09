@@ -1,6 +1,6 @@
-# Handscheck
+# Hands Diff
 
-Handscheck is the public, privacy-safe companion service for Input Activity OBS League recaps. It accepts only schema-version-4 reports and stores aggregate input telemetry, never individual keystrokes.
+Hands Diff is the public, privacy-safe companion service for Input Activity OBS League recaps. It accepts only schema-version-4 reports and stores aggregate input telemetry, never individual keystrokes.
 
 ## Code organization
 
@@ -24,7 +24,7 @@ below 400 nonblank lines. Generated and dependency artifacts are excluded.
    ```
 
    It listens on `127.0.0.1:5433` and retains its data in the named
-   `handscheck_postgres` Docker volume.
+   `hd_postgres` Docker volume.
 
 2. Copy `.env.example` to `.env`. The example `DATABASE_URL` already targets
    the local Compose database. Fill in GitHub OAuth credentials, a long random
@@ -45,8 +45,8 @@ below 400 nonblank lines. Generated and dependency artifacts are excluded.
 
 ## Deploy to Vercel and Neon
 
-Create a Neon database, add its pooled connection URL as `DATABASE_URL` in Vercel, and configure `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `APP_URL=https://handscheck.vercel.app`, and a random `CRON_SECRET`. Deploy this repository root as the Vercel project root, then run `npx prisma migrate deploy` against production.
+Create a Neon database, add its pooled connection URL as `DATABASE_URL` in Vercel, and configure `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `APP_URL=https://hands-diff.vercel.app`, and a random `CRON_SECRET`. Deploy this repository root as the Vercel project root, then run `npx prisma migrate deploy` against production.
 
-Set the GitHub OAuth callback URL to `https://handscheck.vercel.app/api/auth/github/callback`. If a custom domain replaces the Vercel hostname, update both `APP_URL` and that callback URL. Vercel automatically authenticates the configured daily cron using `CRON_SECRET`.
+Set the GitHub OAuth callback URL to `https://hands-diff.vercel.app/api/auth/github/callback`. If a custom domain replaces the Vercel hostname, update both `APP_URL` and that callback URL. Vercel automatically authenticates the configured daily cron using `CRON_SECRET`.
 
-The OBS plugin defaults to `https://handscheck.vercel.app`; packaging can override it with `-DONLINE_REPORTS_SERVICE_URL=https://your-host`.
+The OBS plugin defaults to `https://hands-diff.vercel.app`; packaging can override it with `-DONLINE_REPORTS_SERVICE_URL=https://your-host`.
