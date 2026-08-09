@@ -1,4 +1,4 @@
 interface:
   display_name: "Organize by Purpose"
   short_description: "Place web code in clear ownership folders"
-  default_prompt: "Use $organize-by-purpose to structure this Handscheck web change."
+  default_prompt: "Use $organize-by-purpose to structure this Hands Diff web change."

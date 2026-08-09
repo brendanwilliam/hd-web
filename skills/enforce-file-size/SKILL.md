@@ -1,6 +1,6 @@
 ---
 name: enforce-file-size
-description: Keep Handscheck web's authored files under 400 nonblank lines. Use when adding, editing, splitting, or reviewing application code, tests, scripts, documentation, configuration, or repository skills in this repository.
+description: Keep Hands Diff web's authored files under 400 nonblank lines. Use when adding, editing, splitting, or reviewing application code, tests, scripts, documentation, configuration, or repository skills in this repository.
 ---
 
 # Enforce File Size
