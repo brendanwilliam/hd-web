@@ -1,6 +1,6 @@
 ---
 name: organize-by-purpose
-description: Organize Handscheck web application code by product purpose and ownership. Use when adding, moving, or substantially restructuring routes, components, server logic, validation, integrations, tests, or shared utilities in this repository.
+description: Organize Hands Diff web application code by product purpose and ownership. Use when adding, moving, or substantially restructuring routes, components, server logic, validation, integrations, tests, or shared utilities in this repository.
 ---
 
 # Organize by Purpose

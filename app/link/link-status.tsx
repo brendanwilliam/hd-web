@@ -19,7 +19,7 @@ export function LinkStatus({ code }: { code: string }) {
     return () => { active = false; window.clearInterval(timer); };
   }, [code]);
 
-  if (status === "linked") return <p role="status">Hands Check is linked. <Link href="/tokens">Manage linked devices</Link></p>;
+  if (status === "linked") return <p role="status">Hands Diff is linked. <Link href="/tokens">Manage linked devices</Link></p>;
   if (status === "error") return <p role="alert">We could not confirm this device. Start linking again from OBS.</p>;
-  return <p role="status">Device approved. Waiting for Hands Check to confirm the link…</p>;
+  return <p role="status">Device approved. Waiting for Hands Diff to confirm the link…</p>;
 }

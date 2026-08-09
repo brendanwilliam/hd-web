@@ -2,7 +2,7 @@ import { appUrl } from "@/features/auth/server/account";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const returnToCookie = "handscheck_oauth_return_to";
+const returnToCookie = "hd_oauth_return_to";
 
 export async function GET(request: Request) {
   if (!process.env.GITHUB_CLIENT_ID) return new NextResponse("GitHub OAuth is not configured", { status: 503 });
