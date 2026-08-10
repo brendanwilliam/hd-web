@@ -46,7 +46,8 @@ export async function reconcileReport(reportId: string) {
     const frames = Array.isArray(timelineInfo.frames) ? timelineInfo.frames : [];
     const events = frames.flatMap(frame => Array.isArray(data(frame).events) ? data(frame).events : []).filter(value => typeof value === "object" && value !== null);
     const summary = { player: candidate.participant, teams: info.teams ?? [] } as Prisma.InputJsonValue;
-    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId: candidate.id, participantId: number(candidate.participant.participantId) || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: events as Prisma.InputJsonValue } });
+    const riotGameId = number(info.gameId) ? String(number(info.gameId)) : null;
+    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId, participantId: number(candidate.participant.participantId) || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: events as Prisma.InputJsonValue } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "riot_error";
     await db.report.update({ where: { id: reportId }, data: { reconciliationState: "pending", reconciliationAttempt: { increment: 1 }, reconciliationError: message, retryAt: new Date(Date.now() + 60_000) } });
