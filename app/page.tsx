@@ -1,4 +1,7 @@
 import Link from "next/link";
-import { riotRegions } from "@/features/riot/server/report";
-import { ProfileSearch } from "@/features/profiles/components/profile-search";
-export default function Home() { return <main className="home-page"><section className="home-hero"><p className="eyebrow">HANDS DIFF · LEAGUE RECAPS</p><h1>Your games, with the details that matter.</h1><p>Find public Hands Diff player pages and compare League matches with privacy-safe input recaps.</p><ProfileSearch /></section><section><h2>Preview a Riot match</h2><p>Load Match-v5 data without local input telemetry to check report fallback behavior.</p><form action="/riot"><label>Region<select name="region" defaultValue="americas">{riotRegions.map(region => <option key={region} value={region}>{region[0].toUpperCase() + region.slice(1)}</option>)}</select></label><label>Game ID<input name="game" placeholder="NA1_123456789 or 123456789" required /></label><button type="submit">Load match</button></form></section><p><Link href="/link">Link OBS</Link></p></main>; }
+import { requireAccount } from "@/features/auth/server/account";
+
+export default async function Home() {
+  const account = await requireAccount();
+  return <main className="home-page"><section className="home-hero"><p className="eyebrow">HANDS DIFF · PRIVATE LEAGUE RECAPS</p><h1>Your game inputs, reviewed after the match.</h1><p>Hands Diff keeps game capture private to your account and uploads derived gameplay metrics only.</p><p>{account ? <Link href="/reports">View your reports</Link> : <Link href="/link">Link OBS to upload a report</Link>}</p></section></main>;
+}

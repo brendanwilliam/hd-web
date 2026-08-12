@@ -4,88 +4,77 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model Account {
-  id String @id @default(cuid())
-  githubId String @unique
-  login String
+  id        String      @id @default(cuid())
+  githubId  String      @unique
+  login     String
   avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  grants DeviceGrant[]
-  tokens ApiToken[]
-  profiles Profile[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  grants    DeviceGrant[]
+  tokens    ApiToken[]
+  reports   Report[]
 }
+
 model DeviceGrant {
-  id String @id @default(cuid())
-  deviceCodeHash String @unique
-  userCode String @unique
-  clientName String
-  expiresAt DateTime
-  approvedAt DateTime?
-  consumedAt DateTime?
-  accountId String?
-  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  token ApiToken?
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  deviceCodeHash String    @unique
+  userCode       String    @unique
+  clientName     String
+  expiresAt      DateTime
+  approvedAt     DateTime?
+  consumedAt     DateTime?
+  accountId      String?
+  account        Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  token          ApiToken?
+  createdAt      DateTime  @default(now())
   @@index([expiresAt])
   @@index([accountId])
 }
+
 model ApiToken {
-  id String @id @default(cuid())
-  tokenHash String @unique
-  scope String @default("reports:write")
-  createdAt DateTime @default(now())
+  id         String       @id @default(cuid())
+  tokenHash  String       @unique
+  scope      String       @default("reports:write")
+  createdAt  DateTime     @default(now())
   lastUsedAt DateTime?
-  revokedAt DateTime?
-  accountId String
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  grantId String? @unique
-  grant DeviceGrant? @relation(fields: [grantId], references: [id], onDelete: SetNull)
+  revokedAt  DateTime?
+  accountId  String
+  account    Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  grantId    String?      @unique
+  grant      DeviceGrant? @relation(fields: [grantId], references: [id], onDelete: SetNull)
   @@index([accountId, revokedAt])
 }
-model Profile {
-  id String @id @default(cuid())
-  riotId String
-  riotIdNormalized String @unique
-  slug String @unique
-  accountId String
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  reports Report[]
-  matchSnapshots RiotMatchSnapshot[]
-  riotPuuid String?
-  riotRegion String?
-  riotHistoryFetchedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([accountId])
-}
+
 model Report {
-  id String @id
-  profileId String
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  completedAt DateTime
-  champion String?
-  gameMode String?
-  durationSeconds Int?
-  riotGameId String?
-  payload Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([profileId, completedAt])
-  @@index([profileId, riotGameId])
-}
-model RiotMatchSnapshot {
-  id String @id @default(cuid())
-  profileId String
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  gameId String
-  playedAt DateTime
-  payload Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@unique([profileId, gameId])
-  @@index([profileId, playedAt])
+  id                    String   @id
+  accountId             String
+  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  payloadHash           String
+  payload               Json
+  riotIdGameName        String
+  riotIdTagLine         String
+  observedStartedAt     DateTime
+  durationMs            Int
+  gameMode              String
+  mapNumber             Int
+  resolvedPuuid         String?
+  riotRegion            String?
+  matchId               String?
+  riotGameId            String?
+  participantId         Int?
+  reconciliationState   String   @default("pending")
+  reconciliationAttempt Int      @default(0)
+  retryAt               DateTime?
+  reconciliationError   String?
+  matchSummary          Json?
+  riotEvents            Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@unique([accountId, id])
+  @@index([accountId, observedStartedAt])
+  @@index([reconciliationState, retryAt])
 }

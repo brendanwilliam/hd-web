@@ -1,21 +1,35 @@
 import { z } from "zod";
 
-const object = z.record(z.unknown());
+const bucket = z.object({ second: z.number().int().nonnegative(), apm: z.number().nonnegative(), mouse_velocity: z.number().nonnegative() }).strict();
+const payload = z.object({
+  schema_version: z.literal(2),
+  report_id: z.string().uuid(),
+  capture_policy_version: z.literal(1),
+  payload_hash: z.string().regex(/^[a-f0-9]{64}$/),
+  capture: z.object({
+    started_at_utc: z.string().datetime(), duration_ms: z.number().int().positive().max(86_400_000),
+    game_mode: z.literal("CLASSIC"), map_number: z.literal(11),
+    riot_id: z.object({ game_name: z.string().min(1).max(100), tag_line: z.string().min(1).max(100) }).strict(),
+    frontmost_capture: z.literal(true), complete: z.boolean(), event_detail_truncated: z.boolean()
+  }).strict(),
+  input: z.object({
+    left_clicks: z.number().int().nonnegative(), right_clicks: z.number().int().nonnegative(), gameplay_key_actions: z.number().int().nonnegative(),
+    intensity_by_second: z.array(bucket).max(10_000),
+    summary: z.object({ peak_apm: z.number().nonnegative(), median_apm: z.number().nonnegative(), peak_mouse_velocity: z.number().nonnegative(), median_mouse_velocity: z.number().nonnegative() }).strict()
+  }).strict(),
+  live_context: z.object({ changes: z.array(z.object({ second: z.number().int().nonnegative(), kind: z.string().max(80) }).strict()).max(2_000) }).strict()
+}).strict();
 
-const maxTelemetrySamples = 10_000;
-export const reportSchema = z.object({
-  schema_version: z.union([z.literal(4), z.literal(5)]), id: z.string().uuid(), completed_at: z.string().datetime().or(z.literal("")),
-  player: z.string().min(3).max(100), champion: z.string().max(100).optional(),
-  game_mode: z.string().max(100).optional(), duration_seconds: z.number().int().nonnegative().max(86_400).optional(),
-  samples: z.array(object).max(maxTelemetrySamples).default([]), timeline_samples: z.array(object).max(maxTelemetrySamples).default([]),
-  events: z.array(object).max(maxTelemetrySamples).default([]), timeline_events: z.array(object).max(maxTelemetrySamples).default([]),
-  input_samples: z.array(object).max(maxTelemetrySamples).default([]), hexbins: z.array(object).max(maxTelemetrySamples).default([]),
-  chapters: z.array(object).max(500).default([]), assets: object.optional(), enrichment: object.optional()
-}).passthrough();
-export type ReportPayload = z.infer<typeof reportSchema>;
-export const normalizeRiotId = (riotId: string) => riotId.normalize("NFKC").trim().toLocaleLowerCase();
-export function safeReport(payload: ReportPayload) {
-  // The client never sends raw keys; explicitly remove any accidental key-shaped fields too.
-  const { keys: _keys, key_events: _keyEvents, raw_keys: _rawKeys, ...report } = payload as ReportPayload & Record<string, unknown>;
-  return report;
+export type ReportPayload = z.infer<typeof payload>;
+export function validateReport(value: unknown) {
+  const parsed = payload.safeParse(value);
+  if (!parsed.success) return parsed;
+  const seconds = parsed.data.input.intensity_by_second.map(value => value.second);
+  if (seconds.some((second, index) => index > 0 && second <= seconds[index - 1])) return { success: false as const, error: new z.ZodError([]) };
+  return parsed;
+}
+
+export function canonicalPayload(value: ReportPayload) {
+  const { payload_hash: _hash, ...withoutHash } = value;
+  return JSON.stringify(withoutHash);
 }
