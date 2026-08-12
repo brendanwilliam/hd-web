@@ -60,7 +60,7 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
         {teams.length ? <><h3>Teams</h3><ul>{teams.map((team, index) => <li key={index}>Team {number(team.teamId) || index + 1}: {team.win === true ? "Victory" : "Defeat"}</li>)}</ul></> : null}
         <h3>Riot events</h3>
         {events.length ? <ol>{events.map((event, index) => <li key={index}>{eventLabel(event)}</li>)}</ol> : <p>No timeline events were returned for this match.</p>}
-      </> : <p>{report.reconciliationState === "needs_attention" ? "This report needs attention before match data can be attached." : "Input-only recap while Hands Diff waits for a verified Riot match."} {report.reconciliationError ?? ""}</p>}
+      </> : <p>{["needs_attention", "identity_not_found", "ambiguous_match"].includes(report.reconciliationState) ? "This report needs attention before match data can be attached." : "Input-only recap while Hands Diff waits for a verified Riot match."} {report.reconciliationError ?? ""}</p>}
     </section>
   </main>;
 }
