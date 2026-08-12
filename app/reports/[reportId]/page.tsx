@@ -25,6 +25,7 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
   if (!report) notFound();
 
   const payload = data(report.payload);
+  const capture = data(payload.capture);
   const input = data(payload.input);
   const summary = data(input.summary);
   const match = data(report.matchSummary);
@@ -37,6 +38,7 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
     <p className="eyebrow">PRIVATE INPUT RECAP</p>
     <h1>{report.riotIdGameName}#{report.riotIdTagLine}</h1>
     <p>{report.observedStartedAt.toLocaleString()} · {report.gameMode} · {Math.round(report.durationMs / 60_000)} minutes</p>
+    {capture.complete === false ? <p>This is a partial input capture: Hands Diff began observing after the game started.</p> : null}
     <section>
       <h2>Input summary</h2>
       <ul>
