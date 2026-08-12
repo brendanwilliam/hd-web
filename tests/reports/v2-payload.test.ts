@@ -14,6 +14,11 @@ describe("v2 report payload", () => {
     expect(validateReport(value).success).toBe(true);
     expect(canonicalPayload(value as never)).not.toContain("payload_hash");
   });
+  it("accepts a partial capture", () => {
+    const value = report(); value.capture.complete = false;
+    value.payload_hash = createHash("sha256").update(JSON.stringify(value, (_key, item) => item === value.payload_hash ? undefined : item)).digest("hex");
+    expect(validateReport(value).success).toBe(true);
+  });
   it("rejects raw keys, old schemas, and duplicate seconds", () => {
     expect(validateReport({ ...report(), schema_version: 4 }).success).toBe(false);
     expect(validateReport({ ...report(), raw_keys: ["Q"] }).success).toBe(false);
