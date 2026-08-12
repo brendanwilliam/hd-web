@@ -8,7 +8,7 @@ const payload = z.object({
   payload_hash: z.string().regex(/^[a-f0-9]{64}$/),
   capture: z.object({
     started_at_utc: z.string().datetime(), duration_ms: z.number().int().positive().max(86_400_000),
-    game_mode: z.literal("CLASSIC"), map_number: z.literal(11),
+    game_mode: z.enum(["CLASSIC", "PRACTICETOOL"]), map_number: z.literal(11),
     riot_id: z.object({ game_name: z.string().min(1).max(100), tag_line: z.string().min(1).max(100) }).strict(),
     frontmost_capture: z.literal(true), complete: z.boolean(), event_detail_truncated: z.boolean()
   }).strict(),
@@ -31,5 +31,11 @@ export function validateReport(value: unknown) {
 
 export function canonicalPayload(value: ReportPayload) {
   const { payload_hash: _hash, ...withoutHash } = value;
-  return JSON.stringify(withoutHash);
+  return JSON.stringify(sortedValue(withoutHash));
+}
+
+function sortedValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedValue);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => [key, sortedValue(item)]));
 }
