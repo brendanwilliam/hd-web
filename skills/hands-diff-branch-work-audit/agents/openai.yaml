@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Hands Diff Branch Work"
+  short_description: "Find recently active branches not in develop"
+  default_prompt: "Use $hands-diff-branch-work-audit to report unmerged branch work from the past week."
