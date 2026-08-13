@@ -3,6 +3,8 @@ import { requireAccount } from "@/features/auth/server/account";
 import { db } from "@/shared/server/db";
 import { notFound, redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 type Data = Record<string, unknown>;
 const data = (value: unknown): Data => typeof value === "object" && value !== null ? value as Data : {};
 const number = (value: unknown) => typeof value === "number" ? value : 0;
