@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prepare Hands Diff Pull Request"
+  short_description: "Validate and hand off a Hands Diff pull request"
+  default_prompt: "Use $hands-diff-prepare-pr to validate and prepare this change for review."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start Hands Diff Change"
+  short_description: "Start a governed Hands Diff change"
+  default_prompt: "Use $hands-diff-start-change to begin this Hands Diff change."

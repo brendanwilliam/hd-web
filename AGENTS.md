@@ -15,3 +15,16 @@ Before changing authored files, read the applicable repository-local skill:
 - `skills/enforce-file-size/SKILL.md` for additions, edits, or refactors.
 - `skills/organize-by-purpose/SKILL.md` when adding, moving, or substantially
   restructuring application code.
+- `skills/hands-diff-start-change/SKILL.md` before starting a governed change.
+- `skills/hands-diff-prepare-pr/SKILL.md` before handing off a pull request.
+- `skills/hands-diff-ui-validation/SKILL.md` for user-interface changes.
+- `skills/hands-diff-prisma-migration/SKILL.md` before changing the Prisma schema
+  or creating a migration.
+- `skills/hands-diff-github-issues/SKILL.md` when work begins from a GitHub Issue.
+
+Use `feature/<kebab-title>`, `fix/<kebab-title>`, or `chore/<kebab-title>`
+branches from `origin/main`, and target `main` through a pull request. For an
+explicitly selected same-repository issue, use
+`<type>/<issue>-<kebab-title>` and include `Closes #<issue>` in the PR body.
+Do not automatically assign, label, close, or edit GitHub Issues. Install these
+repository skills with `./scripts/install-repository-skills.sh`.
