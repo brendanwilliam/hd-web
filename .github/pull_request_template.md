@@ -2,6 +2,13 @@
 
 <!-- What changed and why? -->
 
+## Integration target
+
+- [ ] Ordinary change targeting `develop`
+- [ ] Promotion from `develop` to `main`
+
+<!-- `main` is not connected to a public domain today, so this promotion does not deploy the app. -->
+
 ## User impact
 
 <!-- User-visible behavior, compatibility, privacy, or configuration impact. -->

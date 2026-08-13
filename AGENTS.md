@@ -23,8 +23,14 @@ Before changing authored files, read the applicable repository-local skill:
 - `skills/hands-diff-github-issues/SKILL.md` when work begins from a GitHub Issue.
 
 Use `feature/<kebab-title>`, `fix/<kebab-title>`, or `chore/<kebab-title>`
-branches from `origin/main`, and target `main` through a pull request. For an
-explicitly selected same-repository issue, use
+branches from `origin/develop`, and target `develop` through a pull request.
+Promote the integrated `develop` branch to `main` through a separate pull
+request only when the set is ready to go live. For an explicitly selected
+same-repository issue, use
 `<type>/<issue>-<kebab-title>` and include `Closes #<issue>` in the PR body.
 Do not automatically assign, label, close, or edit GitHub Issues. Install these
 repository skills with `./scripts/install-repository-skills.sh`.
+
+`main` is the production-candidate branch, but this application is not currently
+connected to a public domain. A push or merge to `main` therefore does not make
+the application live.
