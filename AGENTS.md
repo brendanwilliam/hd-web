@@ -21,6 +21,8 @@ Before changing authored files, read the applicable repository-local skill:
 - `skills/hands-diff-prisma-migration/SKILL.md` before changing the Prisma schema
   or creating a migration.
 - `skills/hands-diff-github-issues/SKILL.md` when work begins from a GitHub Issue.
+- `skills/hands-diff-branch-work-audit/SKILL.md` when auditing recent work that has not reached `develop`.
+- `skills/hands-diff-daily-branch-reconcile/SKILL.md` when collecting and reconciling the past day's branch commits.
 
 Use `feature/<kebab-title>`, `fix/<kebab-title>`, or `chore/<kebab-title>`
 branches from `origin/develop`, and target `develop` through a pull request.
