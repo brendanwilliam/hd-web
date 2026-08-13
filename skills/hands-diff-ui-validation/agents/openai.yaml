@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validate Hands Diff UI"
+  short_description: "Run focused browser and manual UI validation"
+  default_prompt: "Use $hands-diff-ui-validation to validate this user-interface change."

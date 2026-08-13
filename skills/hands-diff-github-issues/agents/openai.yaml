@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hands Diff GitHub Issues"
+  short_description: "Select an assigned Hands Diff issue and start governed work"
+  default_prompt: "Use $hands-diff-github-issues to list my assigned Hands Diff issues and begin the one I select."

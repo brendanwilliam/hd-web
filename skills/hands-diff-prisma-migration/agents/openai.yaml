@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hands Diff Prisma Migration"
+  short_description: "Create and validate a safe local Prisma migration"
+  default_prompt: "Use $hands-diff-prisma-migration to safely prepare this schema change."
