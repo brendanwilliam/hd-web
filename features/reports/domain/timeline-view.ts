@@ -81,6 +81,12 @@ function snapshot(value: unknown): TimelineSnapshot | null {
         totalGold: number(item.totalGold),
         laneCs: number(item.laneCs),
         jungleCs: number(item.jungleCs),
+        currentGold: number(item.currentGold),
+        level: number(item.level),
+        totalXp: number(item.totalXp),
+        position: null,
+        precision: "frame",
+        players: [],
       }
     : null;
 }
