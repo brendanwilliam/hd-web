@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -109,5 +111,24 @@ describe("v2 report ingestion", () => {
       payloadHash: "f".repeat(64),
     });
     expect((await POST(request(value))).status).toBe(409);
+  });
+
+  it("persists only ordered normalized v3 playback records", async () => {
+    const fixture = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "tests/fixtures/hands-diff/v3-playback.json"),
+        "utf8",
+      ),
+    );
+    expect((await POST(request(fixture))).status).toBe(200);
+    const data = mocks.createReport.mock.calls[0][0].data;
+    expect(data.playbackPrecisionMs).toBe(2_000);
+    expect(data.playbackRecords.createMany.data).toEqual([
+      expect.objectContaining({ ordinal: 0, gameTimeMs: 1_000, normalizedX: 0.25 }),
+      expect.objectContaining({ ordinal: 1, gameTimeMs: 1_100, kind: "left_click" }),
+      expect.objectContaining({ ordinal: 2, gameTimeMs: 1_200, kind: "right_click" }),
+      expect.objectContaining({ ordinal: 3, gameTimeMs: 1_300, actionLabel: "spell_1" }),
+    ]);
+    expect(JSON.stringify(data.playbackRecords)).not.toContain("payload_hash");
   });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { canonicalPayload, validateReport } from "@/features/reports/domain/payload";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 function report() {
   const value = {
@@ -62,6 +64,37 @@ describe("v2 report payload", () => {
   });
   it("uses Qt-compatible sorted object keys for canonical hashing", () => {
     expect(canonicalPayload(report() as never)).toMatch(/^\{"capture":/);
+  });
+  it("accepts the shared v3 fixture with its uploader hash", () => {
+    const fixture = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "tests/fixtures/hands-diff/v3-playback.json"),
+        "utf8",
+      ),
+    );
+    expect(validateReport(fixture).success).toBe(true);
+    expect(createHash("sha256").update(canonicalPayload(fixture)).digest("hex")).toBe(
+      fixture.payload_hash,
+    );
+  });
+  it("rejects unsafe playback and accepts Practice Tool input-only data", () => {
+    const fixture = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "tests/fixtures/hands-diff/v3-playback.json"),
+        "utf8",
+      ),
+    );
+    fixture.input.playback.records[1].pointer = undefined;
+    expect(validateReport(fixture).success).toBe(false);
+
+    const practice = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "tests/fixtures/hands-diff/v3-playback.json"),
+        "utf8",
+      ),
+    );
+    practice.capture.game_mode = "PRACTICETOOL";
+    expect(validateReport(practice).success).toBe(true);
   });
   it("rejects raw keys, old schemas, and duplicate seconds", () => {
     expect(validateReport({ ...report(), schema_version: 4 }).success).toBe(false);
