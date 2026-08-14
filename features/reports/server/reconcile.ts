@@ -1,5 +1,5 @@
 import { db } from "@/shared/server/db";
-import { normalizedMatchSummary, normalizedTimelineEvents, plausibleMatch, retryDelayMs } from "@/features/reports/domain/reconciliation";
+import { normalizedMatchSummary, normalizedReportTimeline, plausibleMatch, retryDelayMs } from "@/features/reports/domain/reconciliation";
 import type { Prisma } from "@prisma/client";
 
 const regions = ["americas", "europe", "asia", "sea"] as const;
@@ -8,15 +8,24 @@ type Data = Record<string, unknown>;
 const data = (value: unknown): Data => typeof value === "object" && value !== null ? value as Data : {};
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const number = (value: unknown) => typeof value === "number" ? value : 0;
+let nextRiotRequestAt = 0;
 
 class RiotError extends Error { constructor(public readonly status: number) { super(`riot_${status}`); } }
 async function riot(url: string) {
+  await paceRiotRequests();
   const key = process.env.RIOT_API_KEY;
   if (!key) throw new Error("riot_not_configured");
   const response = await fetch(url, { headers: { "X-Riot-Token": key }, cache: "no-store" });
   if (response.status === 404) return null;
   if (!response.ok) throw new RiotError(response.status);
   return response.json() as Promise<unknown>;
+}
+
+async function paceRiotRequests() {
+  const now = Date.now();
+  const wait = Math.max(0, nextRiotRequestAt - now);
+  nextRiotRequestAt = Math.max(nextRiotRequestAt, now) + 75;
+  if (wait) await new Promise(resolve => setTimeout(resolve, wait));
 }
 
 export async function reconcileReport(reportId: string) {
@@ -44,12 +53,13 @@ export async function reconcileReport(reportId: string) {
     const timeline = await riot(`https://${region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(candidate.id)}/timeline`);
     const summary = normalizedMatchSummary(candidate.participant, info.teams) as Prisma.InputJsonValue;
     const riotGameId = number(info.gameId) ? String(number(info.gameId)) : null;
-    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId, participantId: number(candidate.participant.participantId) || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: normalizedTimelineEvents(timeline) as Prisma.InputJsonValue } });
+    const participantId = number(candidate.participant.participantId) || 0;
+    const reportTimeline = normalizedReportTimeline(candidate.match, timeline, participantId);
+    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId, participantId: participantId || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: reportTimeline as Prisma.InputJsonValue } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "riot_error";
     const attempts = report.reconciliationAttempt + 1;
-    const permanent = error instanceof RiotError && error.status >= 400 && error.status < 500 && error.status !== 429;
-    await db.report.update({ where: { id: reportId }, data: permanent || attempts >= 8 ? { reconciliationState: "needs_attention", reconciliationAttempt: { increment: 1 }, reconciliationError: permanent ? message : "transient_retry_limit", retryAt: null } : { reconciliationState: "pending", reconciliationAttempt: { increment: 1 }, reconciliationError: message, retryAt: new Date(Date.now() + retryDelayMs(attempts - 1)) } });
+    await db.report.update({ where: { id: reportId }, data: attempts >= 8 ? { reconciliationState: "needs_attention", reconciliationAttempt: { increment: 1 }, reconciliationError: "transient_retry_limit", retryAt: null } : { reconciliationState: "pending", reconciliationAttempt: { increment: 1 }, reconciliationError: message, retryAt: new Date(Date.now() + retryDelayMs(attempts - 1)) } });
   }
 }
 

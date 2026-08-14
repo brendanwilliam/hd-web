@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const bucket = z.object({ second: z.number().int().nonnegative(), apm: z.number().nonnegative(), mouse_velocity: z.number().nonnegative() }).strict();
+const inputEvent = z.object({ second: z.number().int().nonnegative(), kind: z.enum(["left_click", "right_click", "gameplay_key"]) }).strict();
 const payload = z.object({
   schema_version: z.literal(2),
   report_id: z.string().uuid(),
@@ -15,6 +16,7 @@ const payload = z.object({
   input: z.object({
     left_clicks: z.number().int().nonnegative(), right_clicks: z.number().int().nonnegative(), gameplay_key_actions: z.number().int().nonnegative(),
     intensity_by_second: z.array(bucket).max(10_000),
+    event_details: z.array(inputEvent).max(100_000).optional(),
     summary: z.object({ peak_apm: z.number().nonnegative(), median_apm: z.number().nonnegative(), peak_mouse_velocity: z.number().nonnegative(), median_mouse_velocity: z.number().nonnegative() }).strict()
   }).strict(),
   live_context: z.object({ changes: z.array(z.object({ second: z.number().int().nonnegative(), kind: z.string().max(80) }).strict()).max(2_000) }).strict()
