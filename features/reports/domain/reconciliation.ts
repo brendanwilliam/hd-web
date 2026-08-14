@@ -1,3 +1,5 @@
+import type { ChampionDamageSnapshot } from "@/features/reports/domain/champion-damage";
+
 type Data = Record<string, unknown>;
 
 const data = (value: unknown): Data =>
@@ -187,6 +189,27 @@ export function normalizedReportTimeline(
     .map(data)
     .flatMap((event) => normalizeReportEvent(event, byId, linked));
   const levelMarkers = levelMarkersFor(frames, linkedParticipantId, snapshots);
+  const championDamage = frames.flatMap((frame) =>
+    roster.flatMap((rosterPlayer) => {
+      const observed = data(
+        data(frame.participantFrames)[String(rosterPlayer.participantId)],
+      );
+      const stats = data(observed.damageStats);
+      return Object.keys(stats).length
+        ? [
+            {
+              timestamp: number(frame.timestamp),
+              participantId: rosterPlayer.participantId,
+              total: number(stats.totalDamageDoneToChampions),
+              physical: number(stats.physicalDamageDoneToChampions),
+              magic: number(stats.magicDamageDoneToChampions),
+              trueDamage: number(stats.trueDamageDoneToChampions),
+              precision: "frame" as const,
+            },
+          ]
+        : [];
+    }),
+  ) as ChampionDamageSnapshot[];
   const pathing = snapshots
     .filter(
       (snapshot, index) =>
@@ -217,6 +240,7 @@ export function normalizedReportTimeline(
     snapshots,
     events,
     levelMarkers,
+    championDamage,
     pathing,
     jungle,
     levelProgress: snapshots.map((snapshot) =>
