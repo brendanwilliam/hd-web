@@ -4,6 +4,7 @@ import { brushX, line, scaleLinear, select } from "d3";
 import type { ScaleLinear } from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReportTimelineView } from "@/features/reports/domain/timeline-view";
+import { usePlaybackCursor } from "./playback-cursor";
 
 const COLORS = {
   ally: "#58cfca",
@@ -46,9 +47,9 @@ export function championAssetUrls(version: string, champion: string) {
 }
 
 export default function GameInputTimeline({ model }: { model: ReportTimelineView }) {
+  const { cursorMs: hover, seek: setHover } = usePlaybackCursor();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(760),
-    [hover, setHover] = useState<number | null>(null),
     [enabled, setEnabled] = useState(new Set(Object.keys(labels)));
   const [domain, setDomain] = useState<[number, number] | null>(null);
   const brushRef = useRef<SVGGElement>(null);
@@ -187,7 +188,6 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         role="img"
         aria-label="Synchronized game event, game-state, and input timeline"
         onPointerMove={onMove}
-        onPointerLeave={() => setHover(null)}
       >
         <text x={margin.left} y="14" className="timeline-label">
           GAME EVENTS
