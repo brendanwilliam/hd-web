@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAccount } from "@/features/auth/server/account";
 import { GameInputTimeline } from "@/features/reports/components";
+import { PlaybackCursorProvider } from "@/features/reports/components/playback-cursor";
 import { hydrateInputOnlyReport } from "@/features/reports/server";
 import { createReportTimelineView } from "@/features/reports/domain/timeline-view";
 import { db } from "@/shared/server/db";
@@ -126,7 +127,9 @@ export default async function ReportPage({
                 </ul>
               </>
             ) : null}
-            <GameInputTimeline model={timeline} />
+            <PlaybackCursorProvider durationMs={report.durationMs}>
+              <GameInputTimeline model={timeline} />
+            </PlaybackCursorProvider>
           </>
         ) : (
           <p>
