@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAccount } from "@/features/auth/server/account";
-import { db } from "@/shared/server/db";
+import { hydrateInputOnlyReport } from "@/features/reports/server/hydrate-input-only-report";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
   const account = await requireAccount();
   if (!account) redirect("/link");
   const { reportId } = await params;
-  const report = await db.report.findFirst({ where: { id: reportId, accountId: account.id } });
+  const report = await hydrateInputOnlyReport(account.id, reportId);
   if (!report) notFound();
 
   const payload = data(report.payload);
