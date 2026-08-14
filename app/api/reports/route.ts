@@ -47,9 +47,30 @@ export async function POST(request: Request) {
         durationMs: report.capture.duration_ms,
         gameMode: report.capture.game_mode,
         mapNumber: report.capture.map_number,
-        inputEvents: report.input.event_details
-          ? { createMany: { data: report.input.event_details } }
-          : undefined,
+        inputEvents:
+          report.schema_version === 2 && report.input.event_details
+            ? { createMany: { data: report.input.event_details } }
+            : undefined,
+        ...(report.schema_version === 3
+          ? {
+              playbackTruncated: report.input.playback.truncated,
+              playbackOmittedCount: report.input.playback.omitted_record_count,
+              playbackPrecisionMs: report.input.playback.timestamp_precision_ms,
+              playbackRecords: {
+                createMany: {
+                  data: report.input.playback.records.map((record, ordinal) => ({
+                    ordinal,
+                    gameTimeMs: record.game_time_ms,
+                    kind: record.kind,
+                    normalizedX: record.pointer?.x,
+                    normalizedY: record.pointer?.y,
+                    actionLabel:
+                      record.kind === "gameplay_action" ? record.action_label : null,
+                  })),
+                },
+              },
+            }
+          : {}),
       },
     });
     await db.apiToken.update({

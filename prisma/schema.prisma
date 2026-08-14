@@ -8,15 +8,15 @@ datasource db {
 }
 
 model Account {
-  id        String      @id @default(cuid())
-  githubId  String      @unique
-  login     String
-  avatarUrl String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  grants    DeviceGrant[]
-  tokens    ApiToken[]
-  reports   Report[]
+  id          String        @id @default(cuid())
+  githubId    String        @unique
+  login       String
+  avatarUrl   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  grants      DeviceGrant[]
+  tokens      ApiToken[]
+  reports     Report[]
   riotMatches RiotMatch[]
 }
 
@@ -32,6 +32,7 @@ model DeviceGrant {
   account        Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
   token          ApiToken?
   createdAt      DateTime  @default(now())
+
   @@index([expiresAt])
   @@index([accountId])
 }
@@ -47,13 +48,14 @@ model ApiToken {
   account    Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   grantId    String?      @unique
   grant      DeviceGrant? @relation(fields: [grantId], references: [id], onDelete: SetNull)
+
   @@index([accountId, revokedAt])
 }
 
 model Report {
-  id                    String   @id
+  id                    String           @id
   accountId             String
-  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account               Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
   payloadHash           String
   payload               Json
   riotIdGameName        String
@@ -67,18 +69,38 @@ model Report {
   matchId               String?
   riotGameId            String?
   participantId         Int?
-  reconciliationState   String   @default("pending")
-  reconciliationAttempt Int      @default(0)
+  reconciliationState   String           @default("pending")
+  reconciliationAttempt Int              @default(0)
   retryAt               DateTime?
   reconciliationError   String?
   matchSummary          Json?
   riotEvents            Json?
   inputEvents           InputEvent[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  playbackRecords       PlaybackRecord[]
+  playbackTruncated     Boolean?
+  playbackOmittedCount  Int?
+  playbackPrecisionMs   Int?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
   @@unique([accountId, id])
   @@index([accountId, observedStartedAt])
   @@index([reconciliationState, retryAt])
+}
+
+model PlaybackRecord {
+  id          String  @id @default(cuid())
+  reportId    String
+  report      Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  ordinal     Int
+  gameTimeMs  Int
+  kind        String
+  normalizedX Float?
+  normalizedY Float?
+  actionLabel String?
+
+  @@unique([reportId, ordinal])
+  @@index([reportId, gameTimeMs])
 }
 
 model InputEvent {
@@ -88,27 +110,29 @@ model InputEvent {
   second    Int
   kind      String
   createdAt DateTime @default(now())
+
   @@index([reportId, second])
 }
 
 model RiotMatch {
-  id               String   @id @default(cuid())
-  accountId        String
-  account          Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  matchId          String
-  riotGameId       String?
-  riotIdGameName   String
-  riotIdTagLine    String
-  riotRegion       String
-  gameStartedAt    DateTime
-  gameMode         String
-  durationMs       Int
-  matchSummary     Json
-  riotEvents       Json?
-  timelineState    String   @default("pending")
-  timelineError    String?
-  fetchedAt        DateTime @updatedAt
-  createdAt        DateTime @default(now())
+  id             String   @id @default(cuid())
+  accountId      String
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  matchId        String
+  riotGameId     String?
+  riotIdGameName String
+  riotIdTagLine  String
+  riotRegion     String
+  gameStartedAt  DateTime
+  gameMode       String
+  durationMs     Int
+  matchSummary   Json
+  riotEvents     Json?
+  timelineState  String   @default("pending")
+  timelineError  String?
+  fetchedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
   @@unique([accountId, matchId])
   @@index([accountId, gameStartedAt])
 }
