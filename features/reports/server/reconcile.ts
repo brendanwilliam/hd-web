@@ -12,6 +12,7 @@ type Region = (typeof regions)[number];
 type Data = Record<string, unknown>;
 const data = (value: unknown): Data =>
   typeof value === "object" && value !== null ? (value as Data) : {};
+const list = (value: unknown) => (Array.isArray(value) ? value : []);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 const number = (value: unknown) => (typeof value === "number" ? value : 0);
 let nextRiotRequestAt = 0;
@@ -111,6 +112,7 @@ export async function reconcileReport(reportId: string) {
     const summary = normalizedMatchSummary(
       candidate.participant,
       info.teams,
+      list(info.participants),
     ) as Prisma.InputJsonValue;
     const riotGameId = number(info.gameId) ? String(number(info.gameId)) : null;
     const participantId = number(candidate.participant.participantId) || 0;

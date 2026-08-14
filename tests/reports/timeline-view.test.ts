@@ -67,8 +67,20 @@ describe("report timeline normalization", () => {
     const result = normalizedReportTimeline(match, riotTimeline, 1);
     expect(result.gameVersion).toBe("14.12.1");
     expect(result.roster).toEqual([
-      { participantId: 1, teamId: 100, championName: "Ahri", isLinkedPlayer: true },
-      { participantId: 2, teamId: 200, championName: "Garen", isLinkedPlayer: false },
+      {
+        participantId: 1,
+        teamId: 100,
+        championName: "Ahri",
+        role: null,
+        isLinkedPlayer: true,
+      },
+      {
+        participantId: 2,
+        teamId: 200,
+        championName: "Garen",
+        role: null,
+        isLinkedPlayer: false,
+      },
     ]);
     expect(result.events).toEqual([
       { timestamp: 30_000, kind: "takedown", side: "ally", championName: "Ahri" },
@@ -78,6 +90,12 @@ describe("report timeline normalization", () => {
       { timestamp: 32_500, kind: "inhibitor", side: "enemy", championName: null },
     ]);
     expect(result.snapshots).toHaveLength(2);
+    expect(result.snapshots[1]).toMatchObject({
+      currentGold: 0,
+      level: 0,
+      totalXp: 0,
+      precision: "frame",
+    });
   });
 
   it("uses 30-second action bins and velocity summaries", () => {

@@ -21,7 +21,7 @@ describe("v2 reconciliation normalization", () => {
       },
       [{ teamId: 100, win: true, bans: [{ championId: 1 }] }],
     );
-    expect(summary).toEqual({
+    expect(summary).toMatchObject({
       player: {
         championName: "Ahri",
         win: true,
@@ -33,6 +33,7 @@ describe("v2 reconciliation normalization", () => {
       },
       teams: [{ teamId: 100, win: true }],
     });
+    expect(JSON.stringify(summary)).not.toContain("raw");
     const events = normalizedTimelineEvents({
       info: {
         frames: [
@@ -88,5 +89,31 @@ describe("v2 reconciliation normalization", () => {
     ).toBeNull();
     expect(retryDelayMs(0)).toBe(60_000);
     expect(retryDelayMs(8)).toBe(3_600_000);
+  });
+
+  it("retains final all-player economy and objective totals without identities", () => {
+    const summary = normalizedMatchSummary(
+      { participantId: 1, teamId: 100, championName: "Ahri" },
+      [],
+      [
+        {
+          participantId: 1,
+          teamId: 100,
+          championName: "Ahri",
+          goldEarned: 12_000,
+          goldSpent: 11_000,
+          damageDealtToBuildings: 300,
+          damageDealtToObjectives: 500,
+          puuid: "never-retained",
+        },
+      ],
+    );
+    expect(summary.players[0]).toMatchObject({
+      currentGold: 1_000,
+      totalGold: 12_000,
+      damageDealtToBuildings: 300,
+      damageDealtToObjectives: 500,
+    });
+    expect(JSON.stringify(summary)).not.toContain("never-retained");
   });
 });
