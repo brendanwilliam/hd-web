@@ -1,4 +1,5 @@
-import { normalizedMatchSummary, normalizedTimelineEvents } from "@/features/reports/domain/reconciliation";
+import { normalizedMatchSummary } from "@/features/reports/domain/reconciliation";
+import { hydrateRiotMatchTimeline } from "@/features/reports/server/hydrate-riot-match-timeline";
 import { db } from "@/shared/server/db";
 import type { Prisma } from "@prisma/client";
 
@@ -51,24 +52,23 @@ export async function importRecentMatches(accountId: string, gameName: string, t
     const info = data(match.info);
     const participant = list(info.participants).map(data).find(value => text(value.puuid) === puuid);
     if (!participant || number(info.gameStartTimestamp) <= 0) continue;
-    const timeline = await riot(`https://${region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(matchId)}/timeline`);
-    await db.riotMatch.upsert({
+    const stored = await db.riotMatch.upsert({
       where: { accountId_matchId: { accountId, matchId } },
-      create: matchData(accountId, matchId, gameName, tagLine, region, info, participant, timeline),
-      update: matchData(accountId, matchId, gameName, tagLine, region, info, participant, timeline),
+      create: matchData(accountId, matchId, gameName, tagLine, region, info, participant),
+      update: matchData(accountId, matchId, gameName, tagLine, region, info, participant),
     });
+    await hydrateRiotMatchTimeline(accountId, stored.id);
     imported += 1;
   }
   return imported;
 }
 
-function matchData(accountId: string, matchId: string, gameName: string, tagLine: string, region: Region, info: Data, participant: Data, timeline: unknown) {
+function matchData(accountId: string, matchId: string, gameName: string, tagLine: string, region: Region, info: Data, participant: Data) {
   return {
     accountId, matchId, riotGameId: number(info.gameId) ? String(number(info.gameId)) : null,
     riotIdGameName: gameName, riotIdTagLine: tagLine, riotRegion: region,
     gameStartedAt: new Date(number(info.gameStartTimestamp)), gameMode: text(info.gameMode) || "UNKNOWN",
     durationMs: Math.round(number(info.gameDuration) * 1_000),
     matchSummary: normalizedMatchSummary(participant, info.teams) as Prisma.InputJsonValue,
-    riotEvents: normalizedTimelineEvents(timeline) as Prisma.InputJsonValue,
   };
 }

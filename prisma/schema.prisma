@@ -94,6 +94,8 @@ model RiotMatch {
   durationMs       Int
   matchSummary     Json
   riotEvents       Json?
+  timelineState    String   @default("pending")
+  timelineError    String?
   fetchedAt        DateTime @updatedAt
   createdAt        DateTime @default(now())
   @@unique([accountId, matchId])

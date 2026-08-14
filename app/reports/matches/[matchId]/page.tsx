@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAccount } from "@/features/auth/server/account";
+import { hydrateRiotMatchTimeline } from "@/features/reports/server/hydrate-riot-match-timeline";
 import { db } from "@/shared/server/db";
 import { notFound, redirect } from "next/navigation";
 
@@ -19,9 +20,11 @@ export default async function RiotMatchPage({ params }: { params: Promise<{ matc
   const account = await requireAccount();
   if (!account) redirect("/link");
   const { matchId } = await params;
-  const match = await db.riotMatch.findFirst({ where: { id: matchId, accountId: account.id } });
+  const initialMatch = await db.riotMatch.findFirst({ where: { id: matchId, accountId: account.id } });
+  if (!initialMatch) notFound();
+  const match = initialMatch.timelineState === "ready" ? initialMatch : await hydrateRiotMatchTimeline(account.id, initialMatch.id);
   if (!match) notFound();
   const player = data(data(match.matchSummary).player);
   const events = list(match.riotEvents);
-  return <main><p><Link href="/reports">← Your reports</Link></p><p className="eyebrow">RIOT MATCH</p><h1>{match.riotIdGameName}#{match.riotIdTagLine}</h1><p>{match.gameStartedAt.toLocaleString()} · {match.gameMode} · {Math.round(match.durationMs / 60_000)} minutes</p><section><h2>Match recap</h2><p>{text(player.championName) ? `Champion: ${text(player.championName)}.` : "Champion unavailable."}</p><ul><li>Result: {player.win === true ? "Victory" : player.win === false ? "Defeat" : "Unavailable"}</li><li>K / D / A: {number(player.kills)} / {number(player.deaths)} / {number(player.assists)}</li><li>CS: {number(player.totalMinionsKilled) + number(player.neutralMinionsKilled)}</li></ul><h3>Riot timeline</h3>{events.length ? <ol>{events.map((event, index) => <li key={index}>{eventLabel(event)}</li>)}</ol> : <p>No timeline events were returned for this match.</p>}</section></main>;
+  return <main><p><Link href="/reports">← Your reports</Link></p><p className="eyebrow">RIOT MATCH</p><h1>{match.riotIdGameName}#{match.riotIdTagLine}</h1><p>{match.gameStartedAt.toLocaleString()} · {match.gameMode} · {Math.round(match.durationMs / 60_000)} minutes</p><section><h2>Match recap</h2><p>{text(player.championName) ? `Champion: ${text(player.championName)}.` : "Champion unavailable."}</p><ul><li>Result: {player.win === true ? "Victory" : player.win === false ? "Defeat" : "Unavailable"}</li><li>K / D / A: {number(player.kills)} / {number(player.deaths)} / {number(player.assists)}</li><li>CS: {number(player.totalMinionsKilled) + number(player.neutralMinionsKilled)}</li></ul><h3>Riot timeline</h3>{events.length ? <ol>{events.map((event, index) => <li key={index}>{eventLabel(event)}</li>)}</ol> : match.timelineState === "ready" ? <p>No timeline events were returned for this match.</p> : <p>Timeline data is unavailable right now. Refresh to retry. {match.timelineError ?? ""}</p>}</section></main>;
 }
