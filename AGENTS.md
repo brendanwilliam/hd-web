@@ -36,3 +36,15 @@ repository skills with `./scripts/install-repository-skills.sh`.
 `main` is the production-candidate branch, but this application is not currently
 connected to a public domain. A push or merge to `main` therefore does not make
 the application live.
+
+## Readability and file organization
+
+Keep authored files at or below 800 nonblank lines. Treat that as a ceiling, not
+a target: split files by clear product responsibility when it improves ownership
+or readability, never by arbitrary ranges. Keep reusable behavior under its
+feature directory and leave `app/` route entry points thin.
+
+Keep code lines at or below 90 characters. Use logical line breaks, indentation,
+and blank lines to make data construction and control flow easy to scan; do not
+compress code or remove useful whitespace to avoid a refactor. Run the
+repository file-size/readability check before handoff.

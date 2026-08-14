@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 function dateDescription(date: Date | null) {
-  return date ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date) : "Not used yet";
+  return date
+    ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(
+        date,
+      )
+    : "Not used yet";
 }
 
 export default async function TokensPage() {
@@ -17,5 +21,34 @@ export default async function TokensPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  return <main><h1>Linked devices</h1>{tokens.length === 0 ? <p>No linked devices.</p> : <ul>{tokens.map(token => <li key={token.id}><strong>{token.grant?.clientName ?? "Input Activity OBS"}</strong><p>{token.revokedAt ? "Revoked" : "Active"} · Linked {dateDescription(token.createdAt)} · Last used {dateDescription(token.lastUsedAt)}</p>{!token.revokedAt && <form action={revokeToken}><input type="hidden" name="id" value={token.id}/><button>Revoke</button></form>}</li>)}</ul>}<p><Link href="/link">Link another device</Link></p></main>;
+  return (
+    <main>
+      <h1>Linked devices</h1>
+      {tokens.length === 0 ? (
+        <p>No linked devices.</p>
+      ) : (
+        <ul>
+          {tokens.map((token) => (
+            <li key={token.id}>
+              <strong>{token.grant?.clientName ?? "Input Activity OBS"}</strong>
+              <p>
+                {token.revokedAt ? "Revoked" : "Active"} · Linked{" "}
+                {dateDescription(token.createdAt)} · Last used{" "}
+                {dateDescription(token.lastUsedAt)}
+              </p>
+              {!token.revokedAt && (
+                <form action={revokeToken}>
+                  <input type="hidden" name="id" value={token.id} />
+                  <button>Revoke</button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>
+        <Link href="/link">Link another device</Link>
+      </p>
+    </main>
+  );
 }

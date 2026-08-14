@@ -13,7 +13,8 @@ Hands Diff is the public, privacy-safe companion service for Input Activity OBS 
 - `skills/` contains repository-local instructions for agents.
 
 Run `npm run check:file-size` to ensure every authored text file remains at or
-below 400 nonblank lines. Generated and dependency artifacts are excluded.
+below 800 nonblank lines and code remains at or below 90 columns. Generated and
+dependency artifacts are excluded.
 
 ## Local development
 
