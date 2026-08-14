@@ -4,7 +4,10 @@ test("home page presents Hands Diff and device linking", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /your game inputs/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /link obs/i })).toHaveAttribute("href", "/link");
+  await expect(page.getByRole("link", { name: /link obs/i })).toHaveAttribute(
+    "href",
+    "/link",
+  );
 });
 
 test("navigation reaches the device-link entry page", async ({ page }) => {

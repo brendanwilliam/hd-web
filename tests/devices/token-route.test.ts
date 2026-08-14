@@ -1,15 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ findGrant: vi.fn(), createToken: vi.fn(), updateGrant: vi.fn(), transaction: vi.fn() }));
-vi.mock("@/shared/server/db", () => ({ db: {
-  deviceGrant: { findUnique: mocks.findGrant, update: mocks.updateGrant },
-  apiToken: { create: mocks.createToken }, $transaction: mocks.transaction,
-} }));
+const mocks = vi.hoisted(() => ({
+  findGrant: vi.fn(),
+  createToken: vi.fn(),
+  updateGrant: vi.fn(),
+  transaction: vi.fn(),
+}));
+vi.mock("@/shared/server/db", () => ({
+  db: {
+    deviceGrant: { findUnique: mocks.findGrant, update: mocks.updateGrant },
+    apiToken: { create: mocks.createToken },
+    $transaction: mocks.transaction,
+  },
+}));
 
 import { POST } from "@/app/api/device/token/route";
 
-const request = (device_code: unknown) => new Request("http://test/api/device/token", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ device_code }) });
-const approved = { id: "grant", accountId: "owner", approvedAt: new Date(), consumedAt: null, expiresAt: new Date(Date.now() + 60_000) };
+const request = (device_code: unknown) =>
+  new Request("http://test/api/device/token", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ device_code }),
+  });
+const approved = {
+  id: "grant",
+  accountId: "owner",
+  approvedAt: new Date(),
+  consumedAt: null,
+  expiresAt: new Date(Date.now() + 60_000),
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,7 +50,10 @@ describe("device token exchange", () => {
   });
 
   it.each([
-    [null, 410], [{ ...approved, approvedAt: null }, 428], [{ ...approved, consumedAt: new Date() }, 409], [{ ...approved, expiresAt: new Date(0) }, 410],
+    [null, 410],
+    [{ ...approved, approvedAt: null }, 428],
+    [{ ...approved, consumedAt: new Date() }, 409],
+    [{ ...approved, expiresAt: new Date(0) }, 410],
   ])("rejects an invalid grant state", async (grant, status) => {
     mocks.findGrant.mockResolvedValue(grant);
     expect((await POST(request("device-code"))).status).toBe(status);
