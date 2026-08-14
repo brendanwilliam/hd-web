@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAccount } from "@/features/auth/server/account";
+import { buildMatchHistory } from "@/features/reports/domain/match-history";
 import { reportPath, riotMatchPath } from "@/features/reports/domain/paths";
 import { fetchRecentMatchesAction } from "@/features/reports/server/fetch-recent-matches-action";
 import { RecentMatchImportForm } from "@/features/reports/components/recent-match-import-form";
@@ -13,8 +14,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (!account) redirect("/link");
   const [params, reports, matches] = await Promise.all([
     searchParams,
-    db.report.findMany({ where: { accountId: account.id }, orderBy: { observedStartedAt: "desc" }, select: { id: true, observedStartedAt: true, reconciliationState: true, gameMode: true, durationMs: true } }),
-    db.riotMatch.findMany({ where: { accountId: account.id }, orderBy: { gameStartedAt: "desc" }, select: { id: true, gameStartedAt: true, gameMode: true, durationMs: true } }),
+    db.report.findMany({ where: { accountId: account.id }, select: { id: true, observedStartedAt: true, reconciliationState: true, gameMode: true, durationMs: true, matchId: true } }),
+    db.riotMatch.findMany({ where: { accountId: account.id }, select: { id: true, matchId: true, gameStartedAt: true, gameMode: true, durationMs: true } }),
   ]);
-  return <main><p className="eyebrow">PRIVATE REPORTS</p><h1>Your recaps</h1><section><h2>Import Riot match history</h2><p>Fetch your 20 most recent games, including games without Hands Diff input.</p><RecentMatchImportForm action={fetchRecentMatchesAction} />{params.imported ? <p role="status">Imported {params.imported} Riot matches.</p> : null}{fetchError(params.fetch_error) ? <p role="alert">{fetchError(params.fetch_error)}</p> : null}</section><section><h2>Input recaps</h2>{reports.length ? <ul>{reports.map(report => <li key={report.id}><Link href={reportPath(report.id)}>{report.observedStartedAt.toLocaleString()} · {report.gameMode} · {Math.round(report.durationMs / 60_000)} min · {report.reconciliationState.replaceAll("_", " ")}</Link></li>)}</ul> : <p>No uploaded recaps yet.</p>}</section><section><h2>Riot match history</h2>{matches.length ? <ul>{matches.map(match => <li key={match.id}><Link href={riotMatchPath(match.id)}>{match.gameStartedAt.toLocaleString()} · {match.gameMode} · {Math.round(match.durationMs / 60_000)} min · Riot match</Link></li>)}</ul> : <p>Fetch your recent games to populate this history.</p>}</section></main>;
+  const history = buildMatchHistory(matches, reports);
+  return <main><p className="eyebrow">PRIVATE REPORTS</p><h1>Your recaps</h1><section><h2>Import Riot match history</h2><p>Fetch your 20 most recent games, including games without Hands Diff input.</p><RecentMatchImportForm action={fetchRecentMatchesAction} />{params.imported ? <p role="status">Imported {params.imported} Riot matches.</p> : null}{fetchError(params.fetch_error) ? <p role="alert">{fetchError(params.fetch_error)}</p> : null}</section><section><h2>Match history</h2>{history.length ? <ul>{history.map(item => item.kind === "riot" ? <li key={`riot-${item.match.id}`}><Link href={riotMatchPath(item.match.id)}>{item.match.gameStartedAt.toLocaleString()} · {item.match.gameMode} · {Math.round(item.match.durationMs / 60_000)} min · Riot match</Link>{item.inputReport ? <> · Input data linked (<Link href={reportPath(item.inputReport.id)}>view input recap</Link>)</> : " · No input data"}</li> : <li key={`input-${item.report.id}`}><Link href={reportPath(item.report.id)}>{item.report.observedStartedAt.toLocaleString()} · {item.report.gameMode} · {Math.round(item.report.durationMs / 60_000)} min · Input recap · {item.report.reconciliationState.replaceAll("_", " ")}</Link></li>)}</ul> : <p>Fetch your recent games or upload an input recap to populate this history.</p>}</section></main>;
 }
