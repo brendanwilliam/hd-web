@@ -73,11 +73,22 @@ model Report {
   reconciliationError   String?
   matchSummary          Json?
   riotEvents            Json?
+  inputEvents           InputEvent[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   @@unique([accountId, id])
   @@index([accountId, observedStartedAt])
   @@index([reconciliationState, retryAt])
+}
+
+model InputEvent {
+  id        String   @id @default(cuid())
+  reportId  String
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  second    Int
+  kind      String
+  createdAt DateTime @default(now())
+  @@index([reportId, second])
 }
 
 model RiotMatch {

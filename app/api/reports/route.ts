@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       if (existing.payloadHash !== report.payload_hash) return jsonError("report ID was previously submitted with a different payload", 409);
       return NextResponse.json({ id: existing.id, url: reportPath(existing.id), status: "duplicate" });
     }
-    await db.report.create({ data: { id: report.report_id, accountId: token.accountId, payloadHash: report.payload_hash, payload: report as Prisma.InputJsonValue, riotIdGameName: report.capture.riot_id.game_name, riotIdTagLine: report.capture.riot_id.tag_line, observedStartedAt: new Date(report.capture.started_at_utc), durationMs: report.capture.duration_ms, gameMode: report.capture.game_mode, mapNumber: report.capture.map_number } });
+    await db.report.create({ data: { id: report.report_id, accountId: token.accountId, payloadHash: report.payload_hash, payload: report as Prisma.InputJsonValue, riotIdGameName: report.capture.riot_id.game_name, riotIdTagLine: report.capture.riot_id.tag_line, observedStartedAt: new Date(report.capture.started_at_utc), durationMs: report.capture.duration_ms, gameMode: report.capture.game_mode, mapNumber: report.capture.map_number, inputEvents: report.input.event_details ? { createMany: { data: report.input.event_details } } : undefined } });
     await db.apiToken.update({ where: { id: token.id }, data: { lastUsedAt: new Date() } });
     void reconcileReport(report.report_id);
     return NextResponse.json({ id: report.report_id, url: reportPath(report.report_id), status: "accepted" });

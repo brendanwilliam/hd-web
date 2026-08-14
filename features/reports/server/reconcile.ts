@@ -1,5 +1,5 @@
 import { db } from "@/shared/server/db";
-import { normalizedMatchSummary, normalizedTimelineEvents, plausibleMatch, retryDelayMs } from "@/features/reports/domain/reconciliation";
+import { normalizedMatchSummary, normalizedReportTimeline, plausibleMatch, retryDelayMs } from "@/features/reports/domain/reconciliation";
 import type { Prisma } from "@prisma/client";
 
 const regions = ["americas", "europe", "asia", "sea"] as const;
@@ -53,7 +53,9 @@ export async function reconcileReport(reportId: string) {
     const timeline = await riot(`https://${region}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(candidate.id)}/timeline`);
     const summary = normalizedMatchSummary(candidate.participant, info.teams) as Prisma.InputJsonValue;
     const riotGameId = number(info.gameId) ? String(number(info.gameId)) : null;
-    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId, participantId: number(candidate.participant.participantId) || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: normalizedTimelineEvents(timeline) as Prisma.InputJsonValue } });
+    const participantId = number(candidate.participant.participantId) || 0;
+    const reportTimeline = normalizedReportTimeline(candidate.match, timeline, participantId);
+    await db.report.update({ where: { id: reportId }, data: { resolvedPuuid: puuid, riotRegion: region, matchId: candidate.id, riotGameId, participantId: participantId || null, reconciliationState: "matched", reconciliationError: null, retryAt: null, matchSummary: summary, riotEvents: reportTimeline as Prisma.InputJsonValue } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "riot_error";
     const attempts = report.reconciliationAttempt + 1;

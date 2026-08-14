@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireAccount } from "@/features/auth/server/account";
 import { hydrateInputOnlyReport } from "@/features/reports/server/hydrate-input-only-report";
+import GameInputTimeline from "@/features/reports/components/game-input-timeline";
+import { createReportTimelineView } from "@/features/reports/domain/timeline-view";
+import { db } from "@/shared/server/db";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -10,14 +13,6 @@ const data = (value: unknown): Data => typeof value === "object" && value !== nu
 const number = (value: unknown) => typeof value === "number" ? value : 0;
 const list = (value: unknown) => Array.isArray(value) ? value : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
-
-function eventLabel(value: unknown) {
-  const event = data(value);
-  const timestamp = number(event.timestamp);
-  const minutes = Math.floor(timestamp / 60_000);
-  const seconds = Math.floor(timestamp / 1_000) % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")} · ${text(event.type) || "Riot event"}`;
-}
 
 export default async function ReportPage({ params }: { params: Promise<{ reportId: string }> }) {
   const account = await requireAccount();
@@ -33,7 +28,8 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
   const match = data(report.matchSummary);
   const player = data(match.player);
   const teams = list(match.teams).map(data);
-  const events = list(report.riotEvents);
+  const inputEvents = await db.inputEvent.findMany({ where: { reportId: report.id }, select: { second: true, kind: true }, orderBy: { second: "asc" } });
+  const timeline = createReportTimelineView({ durationMs: report.durationMs, riotEvents: report.riotEvents, payload: report.payload, inputEvents });
 
   return <main>
     <p><Link href="/reports">← Your reports</Link></p>
@@ -55,15 +51,14 @@ export default async function ReportPage({ params }: { params: Promise<{ reportI
     <section>
       <h2>Match recap</h2>
       {report.reconciliationState === "matched" ? <>
-        <p>Matched Riot game {report.matchId}. {text(player.championName) ? `Champion: ${text(player.championName)}.` : ""}</p>
+        <p>Verified Riot match. {text(player.championName) ? `Champion: ${text(player.championName)}.` : ""}</p>
         <ul>
           <li>Result: {player.win === true ? "Victory" : player.win === false ? "Defeat" : "Unavailable"}</li>
           <li>K / D / A: {number(player.kills)} / {number(player.deaths)} / {number(player.assists)}</li>
           <li>CS: {number(player.totalMinionsKilled) + number(player.neutralMinionsKilled)}</li>
         </ul>
         {teams.length ? <><h3>Teams</h3><ul>{teams.map((team, index) => <li key={index}>Team {number(team.teamId) || index + 1}: {team.win === true ? "Victory" : "Defeat"}</li>)}</ul></> : null}
-        <h3>Riot events</h3>
-        {events.length ? <ol>{events.map((event, index) => <li key={index}>{eventLabel(event)}</li>)}</ol> : <p>No timeline events were returned for this match.</p>}
+        <GameInputTimeline model={timeline} />
       </> : <p>{["needs_attention", "identity_not_found", "ambiguous_match"].includes(report.reconciliationState) ? "This report needs attention before match data can be attached." : "Input-only recap while Hands Diff waits for a verified Riot match."} {report.reconciliationError ?? ""}</p>}
     </section>
   </main>;
