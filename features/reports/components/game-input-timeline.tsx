@@ -3,6 +3,11 @@
 import { brushX, line, scaleLinear, select } from "d3";
 import type { ScaleLinear } from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  championAssetUrls,
+  nextChampionAssetUrl,
+  RIOT_ATTRIBUTION,
+} from "@/features/reports/domain/data-dragon";
 import type { ReportTimelineView } from "@/features/reports/domain/timeline-view";
 import { usePlaybackCursor } from "./playback-cursor";
 
@@ -28,23 +33,8 @@ const time = (value: number) =>
   `${Math.floor(value / 60_000)}:${Math.floor((value / 1_000) % 60)
     .toString()
     .padStart(2, "0")}`;
-const assetUrl = (version: string, champion: string, fallback = false) => {
-  const assetVersion = fallback ? "latest" : version;
-  const championPath = encodeURIComponent(champion);
-  return [
-    "https://ddragon.leagueoflegends.com/cdn/",
-    `${assetVersion}/img/champion/${championPath}.png`,
-  ].join("");
-};
 const valid = (value: number | null): value is number =>
   value !== null && Number.isFinite(value);
-
-export function championAssetUrls(version: string, champion: string) {
-  return {
-    primary: assetUrl(version, champion),
-    fallback: assetUrl(version, champion, true),
-  };
-}
 
 export default function GameInputTimeline({ model }: { model: ReportTimelineView }) {
   const { cursorMs: hover, seek: setHover } = usePlaybackCursor();
@@ -207,18 +197,10 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           >
             <circle r="8" fill={COLORS[event.side]} />
             {event.championName ? (
-              <image
-                href={assetUrl(model.gameVersion, event.championName)}
-                width="14"
-                height="14"
-                x="-7"
-                y="-7"
-                onError={(image) =>
-                  image.currentTarget.setAttribute(
-                    "href",
-                    assetUrl(model.gameVersion, event.championName!, true),
-                  )
-                }
+              <ChampionMarker
+                version={model.gameVersion}
+                champion={event.championName}
+                kind={event.kind}
               />
             ) : (
               <text textAnchor="middle" dy="4">
@@ -324,10 +306,37 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         Rates use actual Riot frame elapsed time. Ally and enemy are relative to your
         team; no player names are shown.
       </p>
-      <p className="riot-attribution">
-        © Riot Games. Riot Games does not endorse or sponsor this product.
-      </p>
+      <p className="riot-attribution">{RIOT_ATTRIBUTION}</p>
     </section>
+  );
+}
+
+function ChampionMarker({
+  version,
+  champion,
+  kind,
+}: {
+  version: string;
+  champion: string;
+  kind: keyof typeof labels;
+}) {
+  const urls = championAssetUrls(version, champion);
+  const [src, setSrc] = useState(urls.primary ?? urls.fallback);
+  if (!src)
+    return (
+      <text textAnchor="middle" dy="4">
+        {kind[0].toUpperCase()}
+      </text>
+    );
+  return (
+    <image
+      href={src}
+      width="14"
+      height="14"
+      x="-7"
+      y="-7"
+      onError={() => setSrc(nextChampionAssetUrl(urls, src))}
+    />
   );
 }
 

@@ -1,0 +1,10 @@
+{
+  "exactPatch": "14.12.1",
+  "malformedPatch": "14.12",
+  "champions": {
+    "apostrophe": "Cho'Gath",
+    "punctuation": "Nunu & Willump",
+    "whitespace": "  Ahri  ",
+    "missing": " "
+  }
+}
