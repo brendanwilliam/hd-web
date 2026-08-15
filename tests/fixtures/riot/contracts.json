@@ -1,0 +1,78 @@
+{
+  "match": {
+    "complete": {
+      "info": {
+        "gameVersion": "14.12.1",
+        "gameStartTimestamp": 1700000000000,
+        "mapId": 11,
+        "queueId": 420,
+        "gameMode": "CLASSIC",
+        "participants": [
+          {
+            "participantId": 1,
+            "teamId": 100,
+            "championName": "Cho'Gath",
+            "teamPosition": "JUNGLE",
+            "puuid": "never-persisted",
+            "goldEarned": 12000,
+            "goldSpent": 11000,
+            "kills": 3,
+            "deaths": 2,
+            "assists": 8
+          }
+        ],
+        "teams": [{ "teamId": 100, "win": true }]
+      }
+    },
+    "sparse": { "info": { "participants": [] } },
+    "malformed": { "info": { "gameStartTimestamp": "not-a-time" } },
+    "versionVariant": { "info": { "gameVersion": "14.12" } }
+  },
+  "timeline": {
+    "complete": {
+      "info": {
+        "frames": [
+          {
+            "timestamp": 60000,
+            "participantFrames": {
+              "1": {
+                "currentGold": 500,
+                "totalGold": 1000,
+                "minionsKilled": 10,
+                "jungleMinionsKilled": 4,
+                "level": 4,
+                "xp": 1200,
+                "position": { "x": 1000, "y": 2000 },
+                "damageStats": {
+                  "totalDamageDoneToChampions": 300,
+                  "physicalDamageDoneToChampions": 100,
+                  "magicDamageDoneToChampions": 150,
+                  "trueDamageDoneToChampions": 50
+                }
+              }
+            },
+            "events": [
+              {
+                "timestamp": 60000,
+                "type": "CHAMPION_KILL",
+                "killerId": 1,
+                "victimId": 2,
+                "assistingParticipantIds": [],
+                "rawPuuid": "never-persisted"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "sparse": { "info": { "frames": [] } },
+    "malformed": {
+      "info": {
+        "frames": [
+          { "participantFrames": { "1": {} }, "events": [{ "type": "CHAMPION_KILL" }] }
+        ]
+      }
+    },
+    "delayed": { "info": { "frames": [{ "timestamp": 180000, "events": [] }] } }
+  }
+}

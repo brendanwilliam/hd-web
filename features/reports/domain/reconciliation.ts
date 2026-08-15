@@ -7,6 +7,8 @@ const data = (value: unknown): Data =>
 const list = (value: unknown) => (Array.isArray(value) ? value : []);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 const number = (value: unknown) => (typeof value === "number" ? value : 0);
+const validTimestamp = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 
 export type ReconciliationState =
   | "matched"
@@ -68,21 +70,27 @@ export function normalizedTimelineEvents(timeline: unknown) {
   return list(data(data(timeline).info).frames)
     .flatMap((frame) => list(data(frame).events))
     .map((value) => data(value))
-    .map((event) => ({
-      timestamp: number(event.timestamp),
-      type: text(event.type),
-      participantId: number(event.participantId) || null,
-      killerId: number(event.killerId) || null,
-      victimId: number(event.victimId) || null,
-      assistingParticipantIds: list(event.assistingParticipantIds).filter(
-        (id): id is number => typeof id === "number",
-      ),
-      itemId: number(event.itemId) || null,
-      wardType: text(event.wardType) || null,
-      buildingType: text(event.buildingType) || null,
-      teamId: number(event.teamId) || null,
-    }))
-    .filter((event) => event.timestamp >= 0 && event.type.length > 0);
+    .flatMap((event) => {
+      const observedAt = validTimestamp(event.timestamp);
+      if (observedAt === null) return [];
+      return [
+        {
+          timestamp: observedAt,
+          type: text(event.type),
+          participantId: number(event.participantId) || null,
+          killerId: number(event.killerId) || null,
+          victimId: number(event.victimId) || null,
+          assistingParticipantIds: list(event.assistingParticipantIds).filter(
+            (id): id is number => typeof id === "number",
+          ),
+          itemId: number(event.itemId) || null,
+          wardType: text(event.wardType) || null,
+          buildingType: text(event.buildingType) || null,
+          teamId: number(event.teamId) || null,
+        },
+      ];
+    })
+    .filter((event) => event.type.length > 0);
 }
 
 export type TimelineRosterPlayer = {
@@ -148,9 +156,9 @@ export function normalizedReportTimeline(
   const frames = list(data(data(timeline).info).frames).map(data);
   const snapshots = frames.flatMap((frame) => {
     const player = data(data(frame.participantFrames)[String(linkedParticipantId)]);
-    const timestamp = number(frame.timestamp);
+    const timestamp = validTimestamp(frame.timestamp);
     const playerFrames = data(frame.participantFrames);
-    return timestamp >= 0 && Object.keys(player).length
+    return timestamp !== null && Object.keys(player).length
       ? [
           {
             timestamp,
