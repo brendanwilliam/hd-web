@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizedReportTimeline } from "@/features/reports/domain/reconciliation";
 import { createReportTimelineView } from "@/features/reports/domain/timeline-view";
-import { championAssetUrls } from "@/features/reports/components/game-input-timeline";
+import { championAssetUrls } from "@/features/reports/domain/data-dragon";
 
 const match = {
   info: {
