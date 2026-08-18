@@ -17,6 +17,8 @@ export type TimelineBin = {
   leftClicks: number | null;
   rightClicks: number | null;
   gameplayKeys: number | null;
+  apm: number | null;
+  peakApm: number | null;
   meanVelocity: number | null;
   peakVelocity: number | null;
 };
@@ -85,6 +87,7 @@ export function createReportTimelineView(report: {
     .map(data)
     .map((value) => ({
       second: number(value.second),
+      apm: typeof value.apm === "number" ? value.apm : null,
       velocity: number(value.mouse_velocity),
     }));
   const inputAvailable = report.inputEvents.length > 0;
@@ -141,7 +144,7 @@ function buildBins(
   end: number,
   snapshots: TimelineSnapshot[],
   details: Detail[],
-  intensity: { second: number; velocity: number }[],
+  intensity: { second: number; apm: number | null; velocity: number }[],
   inputAvailable: boolean,
 ) {
   const bins: TimelineBin[] = [];
@@ -173,6 +176,12 @@ function buildBins(
         (item) => item.second * 1_000 >= start && item.second * 1_000 < start + 30_000,
       )
       .map((item) => item.velocity);
+    const apm = intensity
+      .filter(
+        (item) => item.second * 1_000 >= start && item.second * 1_000 < start + 30_000,
+      )
+      .map((item) => item.apm)
+      .filter((value): value is number => value !== null);
     bins.push({
       timestamp: start,
       csPerMinute: latestRates?.cs ?? null,
@@ -186,6 +195,8 @@ function buildBins(
       gameplayKeys: inputAvailable
         ? actions.filter((item) => item.kind === "gameplay_key").length * 2
         : null,
+      apm: apm.length ? apm.reduce((sum, value) => sum + value, 0) / apm.length : null,
+      peakApm: apm.length ? Math.max(...apm) : null,
       meanVelocity: velocities.length
         ? velocities.reduce((sum, value) => sum + value, 0) / velocities.length
         : null,

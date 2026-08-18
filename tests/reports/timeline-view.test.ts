@@ -108,8 +108,8 @@ describe("report timeline normalization", () => {
       payload: {
         input: {
           intensity_by_second: [
-            { second: 30, mouse_velocity: 2 },
-            { second: 31, mouse_velocity: 4 },
+            { second: 30, apm: 20, mouse_velocity: 2 },
+            { second: 31, apm: 40, mouse_velocity: 4 },
           ],
         },
       },
@@ -126,6 +126,8 @@ describe("report timeline normalization", () => {
       leftClicks: 2,
       rightClicks: 2,
       gameplayKeys: 2,
+      apm: 30,
+      peakApm: 40,
       meanVelocity: 3,
       peakVelocity: 4,
     });

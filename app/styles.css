@@ -98,16 +98,37 @@ section {
 .timeline-time-grid {
   stroke: #3b4c61;
   stroke-dasharray: 2 5;
-  stroke-opacity: 0.7;
+  stroke-opacity: 0.5;
+}
+.timeline-time-grid.major {
+  stroke: #71849a;
+  stroke-dasharray: none;
+  stroke-opacity: 0.85;
 }
 .timeline-tick-label {
   fill: #71849a;
   font-size: 10px;
 }
-.timeline-axis-label {
+.timeline-axis-title {
   fill: #71849a;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
+}
+.timeline-y-axis-line {
+  stroke: currentColor;
+  stroke-opacity: 0.7;
+}
+.timeline-y-axis-unit {
+  font-size: 9px;
+  font-weight: 800;
+}
+.timeline-y-axis-range {
+  font-size: 9px;
+}
+.timeline-y-grid {
+  stroke: #3b4c61;
+  stroke-dasharray: 2 5;
+  stroke-opacity: 0.55;
 }
 .timeline-background {
   fill: #0b111a;
@@ -117,6 +138,10 @@ section {
   fill: none;
   stroke-width: 2.5;
   vector-effect: non-scaling-stroke;
+}
+.unified-line.dashed {
+  stroke-dasharray: 4 4;
+  stroke-opacity: 0.8;
 }
 .timeline-event {
   cursor: help;
@@ -152,6 +177,10 @@ section {
 .timeline-hover-values text {
   font-size: 10px;
   font-weight: 700;
+}
+.timeline-hover-values line {
+  stroke-dasharray: 3 3;
+  stroke-opacity: 0.8;
 }
 .timeline-cursor-time text {
   fill: #e6edf5;

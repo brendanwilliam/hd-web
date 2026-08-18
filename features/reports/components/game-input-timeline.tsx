@@ -1,7 +1,6 @@
 "use client";
 
 import { brushX, line, scaleLinear, select } from "d3";
-import type { ScaleLinear } from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   championAssetUrls,
@@ -47,7 +46,8 @@ const laneLabels = {
   structure: "STRUCTURES",
 };
 const laneY = { combat: 42, objective: 68, structure: 94 };
-const gridIntervalMs = 3 * 60_000;
+const minorGridIntervalMs = 60_000;
+const majorGridIntervalMs = 5 * 60_000;
 const time = (value: number) =>
   `${Math.floor(value / 60_000)}:${Math.floor((value / 1_000) % 60)
     .toString()
@@ -70,9 +70,9 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     return () => observer.disconnect();
   }, []);
   const outer = Math.round(width),
-    margin = { left: 42, right: 14, top: 20, bottom: 38 },
+    margin = { left: 54, right: 54, top: 20, bottom: 38 },
     inner = outer - margin.left - margin.right,
-    height = 456;
+    height = 474;
   const full: [number, number] = [
     0,
     Math.max(...model.bins.map((bin) => bin.timestamp), 30_000),
@@ -110,7 +110,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
       enabled.has(event.kind),
   );
   const eventGroups = groupTimelineEvents(events);
-  const timeTicks = threeMinuteTicks(activeDomain);
+  const timeTicks = minuteTicks(activeDomain);
   const selected =
     hover === null
       ? null
@@ -127,12 +127,12 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     cursorX === null
       ? null
       : Math.max(margin.left + 23, Math.min(margin.left + inner - 23, cursorX));
-  const valueLabelOnLeft = cursorX !== null && cursorX > margin.left + inner - 110;
   const linePath = (
     values: (number | null)[],
     top: number,
     rowHeight: number,
     color: string,
+    dashed = false,
   ) => {
     const finite = values.filter(valid);
     if (!finite.length) return null;
@@ -148,7 +148,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             .y((value) => y(value as number))(values) ?? undefined
         }
         stroke={color}
-        className="unified-line"
+        className={dashed ? "unified-line dashed" : "unified-line"}
       />
     );
   };
@@ -198,7 +198,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
       {!model.inputAvailable ? (
         <p role="status">
           Detailed input action timeline unavailable for this legacy report. Mouse
-          velocity remains available.
+          velocity and APM remain available.
         </p>
       ) : null}
       <svg
@@ -217,7 +217,11 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             x2={x(tick)}
             y1="20"
             y2="370"
-            className="timeline-time-grid"
+            className={
+              tick % majorGridIntervalMs === 0
+                ? "timeline-time-grid major"
+                : "timeline-time-grid"
+            }
           />
         ))}
         <line
@@ -248,20 +252,23 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         <text x={margin.left} y="128" className="timeline-label">
           CS/MIN · GOLD/MIN
         </text>
-        <text
-          x="15"
-          y="183"
-          transform="rotate(-90 15 183)"
-          className="timeline-axis-label"
-        >
-          CS/min · Gold/min
-        </text>
-        <rect
-          x={margin.left}
-          y="136"
-          width={inner}
-          height="94"
-          className="timeline-background"
+        <DualYAxis
+          left={{
+            label: "CS/min",
+            color: COLORS.cs,
+            values: bins.map((bin) => bin.csPerMinute),
+            activeValue: selected?.csPerMinute ?? null,
+          }}
+          right={{
+            label: "Gold/min",
+            color: COLORS.gold,
+            values: bins.map((bin) => bin.goldPerMinute),
+            activeValue: selected?.goldPerMinute ?? null,
+          }}
+          leftX={margin.left}
+          rightX={margin.left + inner}
+          top={136}
+          height={94}
         />
         {linePath(
           bins.map((bin) => bin.csPerMinute),
@@ -278,38 +285,49 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         <text x={margin.left} y="252" className="timeline-label">
           INPUT APM · MOUSE VELOCITY
         </text>
-        <text
-          x="15"
-          y="315"
-          transform="rotate(-90 15 315)"
-          className="timeline-axis-label"
-        >
-          APM · velocity (px/s)
-        </text>
-        <rect
-          x={margin.left}
-          y="260"
-          width={inner}
-          height="110"
-          className="timeline-background"
+        <DualYAxis
+          left={{
+            label: "APM",
+            color: COLORS.left,
+            values: bins.map(actionsPerMinute),
+            activeValue: selected ? actionsPerMinute(selected) : null,
+          }}
+          right={{
+            label: "Velocity px/s",
+            color: COLORS.velocity,
+            values: bins.map((bin) => bin.meanVelocity),
+            activeValue: selected?.meanVelocity ?? null,
+          }}
+          leftX={margin.left}
+          rightX={margin.left + inner}
+          top={260}
+          height={110}
         />
-        {renderBars(bins, x, 260, 110)}
+        {linePath(
+          bins.map(actionsPerMinute),
+          260,
+          110,
+          COLORS.left,
+        )}
+        {linePath(
+          bins.map((bin) => bin.peakApm),
+          260,
+          110,
+          COLORS.left,
+          true,
+        )}
         {linePath(
           bins.map((bin) => bin.meanVelocity),
           260,
           110,
           COLORS.velocity,
         )}
-        {bins.map((bin) =>
-          valid(bin.peakVelocity) ? (
-            <circle
-              key={bin.timestamp}
-              cx={x(bin.timestamp)}
-              cy={velocityY(bins, bin.peakVelocity, 260, 110)}
-              r="2.5"
-              fill="#e6975588"
-            />
-          ) : null,
+        {linePath(
+          bins.map((bin) => bin.peakVelocity),
+          260,
+          110,
+          COLORS.velocity,
+          true,
         )}
         {cursorX !== null && cursorLabelX !== null ? (
           <>
@@ -334,7 +352,8 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
                 bin={selected}
                 bins={bins}
                 x={cursorX}
-                labelOnLeft={valueLabelOnLeft}
+                leftX={margin.left}
+                rightX={margin.left + inner}
               />
             ) : null}
           </>
@@ -348,7 +367,9 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           opacity=".45"
         />
         <g ref={brushRef} />
-        {timeTicks.map((tick) => (
+        {timeTicks
+          .filter((tick) => tick % majorGridIntervalMs === 0)
+          .map((tick) => (
           <text
             key={tick}
             x={x(tick)}
@@ -358,9 +379,20 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           >
             {time(tick)}
           </text>
-        ))}
-        <text x={margin.left} y="434" className="timeline-label">
-          Drag the gold strip to zoom · {time(activeDomain[0])}–{time(activeDomain[1])}
+          ))}
+        <text x={margin.left} y="434" className="timeline-axis-title">
+          GAME TIME (MM:SS)
+        </text>
+        <text
+          x={margin.left + inner}
+          y="434"
+          textAnchor="end"
+          className="timeline-axis-title"
+        >
+          {time(activeDomain[0])}–{time(activeDomain[1])}
+        </text>
+        <text x={margin.left} y="452" className="timeline-label">
+          Drag the gold strip to zoom
         </text>
       </svg>
       {selected ? (
@@ -443,11 +475,11 @@ function groupedOffsets(count: number) {
   return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * 9);
 }
 
-function threeMinuteTicks(domain: [number, number]) {
-  const first = Math.ceil(domain[0] / gridIntervalMs) * gridIntervalMs;
-  const count = Math.floor((domain[1] - first) / gridIntervalMs) + 1;
+function minuteTicks(domain: [number, number]) {
+  const first = Math.ceil(domain[0] / minorGridIntervalMs) * minorGridIntervalMs;
+  const count = Math.floor((domain[1] - first) / minorGridIntervalMs) + 1;
   return count > 0
-    ? Array.from({ length: count }, (_, index) => first + index * gridIntervalMs)
+    ? Array.from({ length: count }, (_, index) => first + index * minorGridIntervalMs)
     : [];
 }
 
@@ -471,12 +503,14 @@ function ChartHoverValues({
   bin,
   bins,
   x,
-  labelOnLeft,
+  leftX,
+  rightX,
 }: {
   bin: ReportTimelineView["bins"][number];
   bins: ReportTimelineView["bins"];
   x: number;
-  labelOnLeft: boolean;
+  leftX: number;
+  rightX: number;
 }) {
   const csY = valueY(
     bins.map((item) => item.csPerMinute),
@@ -496,76 +530,139 @@ function ChartHoverValues({
     260,
     110,
   );
-  const apm =
-    (bin.leftClicks ?? 0) + (bin.rightClicks ?? 0) + (bin.gameplayKeys ?? 0);
-  const labelX = x + (labelOnLeft ? -7 : 7);
-  const labelAnchor = labelOnLeft ? "end" : "start";
+  const apm = actionsPerMinute(bin);
+  const apmY = valueY(bins.map(actionsPerMinute), apm, 260, 110);
   return (
     <g className="timeline-hover-values">
+      {csY === null ? null : (
+        <line x1={leftX} x2={rightX} y1={csY} y2={csY} stroke={COLORS.cs} />
+      )}
+      {goldY === null ? null : (
+        <line x1={leftX} x2={rightX} y1={goldY} y2={goldY} stroke={COLORS.gold} />
+      )}
+      {apmY === null ? null : (
+        <line x1={leftX} x2={rightX} y1={apmY} y2={apmY} stroke={COLORS.left} />
+      )}
+      {velocityY === null ? null : (
+        <line
+          x1={leftX}
+          x2={rightX}
+          y1={velocityY}
+          y2={velocityY}
+          stroke={COLORS.velocity}
+        />
+      )}
       {csY === null ? null : <circle cx={x} cy={csY} r="3" fill={COLORS.cs} />}
       {goldY === null ? null : <circle cx={x} cy={goldY} r="3" fill={COLORS.gold} />}
+      {apmY === null ? null : <circle cx={x} cy={apmY} r="3" fill={COLORS.left} />}
       {velocityY === null ? null : (
         <circle cx={x} cy={velocityY} r="3" fill={COLORS.velocity} />
       )}
-      <text x={labelX} y="151" textAnchor={labelAnchor} fill={COLORS.cs}>
-        CS {format(bin.csPerMinute)}/min
-      </text>
-      <text x={labelX} y="164" textAnchor={labelAnchor} fill={COLORS.gold}>
-        Gold {format(bin.goldPerMinute)}/min
-      </text>
-      <text x={labelX} y="276" textAnchor={labelAnchor} fill={COLORS.left}>
-        {bin.leftClicks === null ? "APM unavailable" : `APM ${apm.toFixed(0)}`}
-      </text>
-      <text x={labelX} y="289" textAnchor={labelAnchor} fill={COLORS.velocity}>
-        Velocity {format(bin.meanVelocity)} px/s
-      </text>
     </g>
   );
 }
 
-function renderBars(
-  bins: ReportTimelineView["bins"],
-  x: ScaleLinear<number, number>,
-  top: number,
-  height: number,
-) {
-  const max = Math.max(
-    1,
-    ...bins.map(
-      (bin) => (bin.leftClicks ?? 0) + (bin.rightClicks ?? 0) + (bin.gameplayKeys ?? 0),
-    ),
+function DualYAxis({
+  left,
+  right,
+  leftX,
+  rightX,
+  top,
+  height,
+}: {
+  left: AxisSeries;
+  right: AxisSeries;
+  leftX: number;
+  rightX: number;
+  top: number;
+  height: number;
+}) {
+  const center = top + height / 2;
+  return (
+    <g className="timeline-y-axis">
+      <AxisSide series={left} x={leftX} top={top} height={height} side="left" />
+      <AxisSide series={right} x={rightX} top={top} height={height} side="right" />
+      <line x1={leftX} x2={rightX} y1={center} y2={center} className="timeline-y-grid" />
+    </g>
   );
-  return bins.map((bin) => {
-    const values = [
-      [bin.leftClicks, COLORS.left],
-      [bin.rightClicks, COLORS.right],
-      [bin.gameplayKeys, COLORS.key],
-    ] as const;
-    let offset = top + height;
-    return values.map(([value, color], index) => {
-      const h = ((value ?? 0) / max) * height;
-      offset -= h;
-      return (
-        <rect
-          key={index}
-          x={x(bin.timestamp) - 4}
-          y={offset}
-          width="8"
-          height={h}
-          fill={color}
-        />
-      );
-    });
-  });
 }
-function velocityY(
-  bins: ReportTimelineView["bins"],
-  value: number,
-  top: number,
-  height: number,
-) {
-  const max = Math.max(1, ...bins.map((bin) => bin.peakVelocity ?? 0));
-  return top + height - (value / max) * height;
+
+type AxisSeries = {
+  label: string;
+  color: string;
+  values: (number | null)[];
+  activeValue: number | null;
+};
+
+function AxisSide({
+  series,
+  x,
+  top,
+  height,
+  side,
+}: {
+  series: AxisSeries;
+  x: number;
+  top: number;
+  height: number;
+  side: "left" | "right";
+}) {
+  const max = seriesMax(series.values);
+  const activeY = valueY(series.values, series.activeValue, top, height);
+  const labelX = x + (side === "left" ? -7 : 7);
+  const anchor = side === "left" ? "end" : "start";
+  return (
+    <g fill={series.color}>
+      <line
+        x1={x}
+        x2={x}
+        y1={top}
+        y2={top + height}
+        stroke={series.color}
+        className="timeline-y-axis-line"
+      />
+      <text x={labelX} y={top - 5} textAnchor={anchor} className="timeline-y-axis-unit">
+        {series.label}
+      </text>
+      <text x={labelX} y={top + 8} textAnchor={anchor} className="timeline-y-axis-range">
+        {formatAxis(max)}
+      </text>
+      <text
+        x={labelX}
+        y={top + height}
+        textAnchor={anchor}
+        className="timeline-y-axis-range"
+      >
+        0
+      </text>
+      {activeY === null ? null : (
+        <>
+          <line
+            x1={x}
+            x2={x}
+            y1={activeY - 6}
+            y2={activeY + 6}
+            stroke={series.color}
+            strokeWidth="4"
+          />
+          <text
+            x={labelX}
+            y={activeY + 4}
+            textAnchor={anchor}
+            className="timeline-y-axis-current"
+          >
+            {formatAxis(series.activeValue ?? 0)}
+          </text>
+        </>
+      )}
+    </g>
+  );
+}
+
+function actionsPerMinute(bin: ReportTimelineView["bins"][number]) {
+  if (bin.apm !== null) return bin.apm;
+  if (bin.leftClicks === null) return null;
+  return (bin.leftClicks ?? 0) + (bin.rightClicks ?? 0) + (bin.gameplayKeys ?? 0);
 }
 function valueY(
   values: (number | null)[],
@@ -576,6 +673,12 @@ function valueY(
   if (!valid(value)) return null;
   const max = Math.max(1, ...values.filter(valid));
   return top + height - (value / max) * height;
+}
+function seriesMax(values: (number | null)[]) {
+  return Math.max(1, ...values.filter(valid));
+}
+function formatAxis(value: number) {
+  return value >= 100 ? value.toFixed(0) : value.toFixed(1);
 }
 function format(value: number | null) {
   return value === null ? "unavailable" : value.toFixed(1);
