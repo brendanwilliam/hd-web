@@ -29,6 +29,39 @@ export type ReportTimelineView = {
   gameAvailable: boolean;
 };
 type Detail = { second: number; kind: string };
+export type TimelineEventGroup = {
+  timestamp: number;
+  events: TimelineEvent[];
+};
+
+const eventGroupWindowMs = 6_000;
+
+export function eventLane(event: TimelineEvent) {
+  if (event.kind === "takedown" || event.kind === "death") return "combat";
+  if (event.kind === "monster") return "objective";
+  return "structure";
+}
+
+export function groupTimelineEvents(events: TimelineEvent[]): TimelineEventGroup[] {
+  const groupsByLane = new Map<string, TimelineEventGroup[]>();
+  const orderedEvents = [...events].sort(
+    (first, second) => first.timestamp - second.timestamp,
+  );
+  for (const event of orderedEvents) {
+    const lane = eventLane(event);
+    const groups = groupsByLane.get(lane) ?? [];
+    const previous = groups.at(-1);
+    if (previous && event.timestamp - previous.timestamp <= eventGroupWindowMs) {
+      previous.events.push(event);
+    } else {
+      groups.push({ timestamp: event.timestamp, events: [event] });
+    }
+    groupsByLane.set(lane, groups);
+  }
+  return [...groupsByLane.values()]
+    .flat()
+    .sort((first, second) => first.timestamp - second.timestamp);
+}
 
 export function createReportTimelineView(report: {
   durationMs: number;
@@ -112,15 +145,16 @@ function buildBins(
   inputAvailable: boolean,
 ) {
   const bins: TimelineBin[] = [];
+  let latestRates: { cs: number; gold: number } | null = null;
   for (let start = 0; start <= end; start += 30_000) {
     const current = [...snapshots]
       .reverse()
-      .find((item) => item.timestamp >= start && item.timestamp < start + 30_000);
+      .find((item) => item.timestamp <= start + 30_000);
     const previous = current
       ? [...snapshots].reverse().find((item) => item.timestamp < current.timestamp)
       : undefined;
     const elapsed = current && previous ? current.timestamp - previous.timestamp : 0;
-    const rates =
+    const observedRates =
       current && previous && elapsed > 0
         ? {
             cs:
@@ -130,6 +164,7 @@ function buildBins(
             gold: ((current.totalGold - previous.totalGold) * 60_000) / elapsed,
           }
         : null;
+    latestRates = observedRates ?? latestRates;
     const actions = details.filter(
       (item) => item.second * 1_000 >= start && item.second * 1_000 < start + 30_000,
     );
@@ -140,8 +175,8 @@ function buildBins(
       .map((item) => item.velocity);
     bins.push({
       timestamp: start,
-      csPerMinute: rates?.cs ?? null,
-      goldPerMinute: rates?.gold ?? null,
+      csPerMinute: latestRates?.cs ?? null,
+      goldPerMinute: latestRates?.gold ?? null,
       leftClicks: inputAvailable
         ? actions.filter((item) => item.kind === "left_click").length * 2
         : null,

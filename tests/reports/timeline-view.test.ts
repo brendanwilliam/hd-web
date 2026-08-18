@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { normalizedReportTimeline } from "@/features/reports/domain/reconciliation";
-import { createReportTimelineView } from "@/features/reports/domain/timeline-view";
+import {
+  createReportTimelineView,
+  groupTimelineEvents,
+} from "@/features/reports/domain/timeline-view";
 import { championAssetUrls } from "@/features/reports/domain/data-dragon";
 
 const match = {
@@ -126,6 +129,34 @@ describe("report timeline normalization", () => {
       meanVelocity: 3,
       peakVelocity: 4,
     });
+  });
+
+  it("carries actual frame-derived rates into the 30-second display bins", () => {
+    const view = createReportTimelineView({
+      durationMs: 90_000,
+      riotEvents: normalizedReportTimeline(match, riotTimeline, 1),
+      payload: { input: { intensity_by_second: [] } },
+      inputEvents: [],
+    });
+    expect(view.bins.find((item) => item.timestamp === 60_000)).toMatchObject({
+      csPerMinute: (6 * 60_000) / 31_000,
+      goldPerMinute: (300 * 60_000) / 31_000,
+    });
+    expect(view.bins.find((item) => item.timestamp === 90_000)).toMatchObject({
+      csPerMinute: (6 * 60_000) / 31_000,
+      goldPerMinute: (300 * 60_000) / 31_000,
+    });
+  });
+
+  it("groups close events in their semantic timeline lanes", () => {
+    const groups = groupTimelineEvents(
+      normalizedReportTimeline(match, riotTimeline, 1).events,
+    );
+    expect(groups.map((group) => group.events.map((event) => event.kind))).toEqual([
+      ["takedown", "death"],
+      ["tower", "inhibitor"],
+      ["monster"],
+    ]);
   });
 
   it("leaves detailed actions unavailable when no detailed input was captured", () => {

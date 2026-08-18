@@ -8,7 +8,12 @@ import {
   nextChampionAssetUrl,
   RIOT_ATTRIBUTION,
 } from "@/features/reports/domain/data-dragon";
-import type { ReportTimelineView } from "@/features/reports/domain/timeline-view";
+import {
+  eventLane,
+  groupTimelineEvents,
+  type ReportTimelineView,
+  type TimelineEventGroup,
+} from "@/features/reports/domain/timeline-view";
 import { usePlaybackCursor } from "./playback-cursor";
 
 const COLORS = {
@@ -29,6 +34,19 @@ const labels = {
   tower: "Tower",
   inhibitor: "Inhibitor",
 };
+const eventEmoji = {
+  takedown: "⚔️",
+  death: "💀",
+  monster: "🐉",
+  tower: "🏰",
+  inhibitor: "💎",
+};
+const laneLabels = {
+  combat: "KILLS / DEATHS",
+  objective: "EPIC MONSTERS",
+  structure: "STRUCTURES",
+};
+const laneY = { combat: 42, objective: 68, structure: 94 };
 const time = (value: number) =>
   `${Math.floor(value / 60_000)}:${Math.floor((value / 1_000) % 60)
     .toString()
@@ -39,8 +57,8 @@ const valid = (value: number | null): value is number =>
 export default function GameInputTimeline({ model }: { model: ReportTimelineView }) {
   const { cursorMs: hover, seek: setHover } = usePlaybackCursor();
   const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(760),
-    [enabled, setEnabled] = useState(new Set(Object.keys(labels)));
+  const [width, setWidth] = useState(760);
+  const [enabled, setEnabled] = useState(new Set(Object.keys(labels)));
   const [domain, setDomain] = useState<[number, number] | null>(null);
   const brushRef = useRef<SVGGElement>(null);
   useEffect(() => {
@@ -53,7 +71,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   const outer = Math.round(width),
     margin = { left: 42, right: 14, top: 20, bottom: 38 },
     inner = outer - margin.left - margin.right,
-    height = 430;
+    height = 456;
   const full: [number, number] = [
     0,
     Math.max(...model.bins.map((bin) => bin.timestamp), 30_000),
@@ -90,6 +108,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
       event.timestamp <= activeDomain[1] &&
       enabled.has(event.kind),
   );
+  const eventGroups = groupTimelineEvents(events);
   const selected =
     hover === null
       ? null
@@ -160,7 +179,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             onClick={() => toggle(kind)}
           >
             <i style={{ background: kind === "death" ? COLORS.enemy : COLORS.ally }} />
-            {label}
+            {eventEmoji[kind as keyof typeof eventEmoji]} {label}
           </button>
         ))}
       </div>
@@ -185,69 +204,64 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         <line
           x1={margin.left}
           x2={margin.left + inner}
-          y1="52"
-          y2="52"
+          y1="105"
+          y2="105"
           className="timeline-grid"
         />
-        {events.map((event, index) => (
-          <g
-            key={`${event.timestamp}-${index}`}
-            transform={`translate(${x(event.timestamp)},${38 + (index % 2) * 22})`}
-            className="timeline-event"
+        {Object.entries(laneLabels).map(([lane, label]) => (
+          <text
+            key={lane}
+            x={margin.left}
+            y={laneY[lane as keyof typeof laneY] - 13}
+            className="timeline-lane-label"
           >
-            <circle r="8" fill={COLORS[event.side]} />
-            {event.championName ? (
-              <ChampionMarker
-                version={model.gameVersion}
-                champion={event.championName}
-                kind={event.kind}
-              />
-            ) : (
-              <text textAnchor="middle" dy="4">
-                {event.kind[0].toUpperCase()}
-              </text>
-            )}
-            <title>
-              {`${time(event.timestamp)} · ${labels[event.kind]} · ${event.side}`}
-            </title>
-          </g>
+            {label}
+          </text>
         ))}
-        <text x={margin.left} y="96" className="timeline-label">
+        {eventGroups.map((group, index) => (
+          <EventGroup
+            key={`${group.timestamp}-${index}`}
+            group={group}
+            x={x(group.timestamp)}
+            version={model.gameVersion}
+          />
+        ))}
+        <text x={margin.left} y="128" className="timeline-label">
           CS/MIN · GOLD/MIN
         </text>
         <rect
           x={margin.left}
-          y="104"
+          y="136"
           width={inner}
           height="94"
           className="timeline-background"
         />
         {linePath(
           bins.map((bin) => bin.csPerMinute),
-          104,
+          136,
           94,
           COLORS.cs,
         )}
         {linePath(
           bins.map((bin) => bin.goldPerMinute),
-          104,
+          136,
           94,
           COLORS.gold,
         )}
-        <text x={margin.left} y="220" className="timeline-label">
+        <text x={margin.left} y="252" className="timeline-label">
           INPUT APM · MOUSE VELOCITY
         </text>
         <rect
           x={margin.left}
-          y="228"
+          y="260"
           width={inner}
           height="110"
           className="timeline-background"
         />
-        {renderBars(bins, x, 228, 110)}
+        {renderBars(bins, x, 260, 110)}
         {linePath(
           bins.map((bin) => bin.meanVelocity),
-          228,
+          260,
           110,
           COLORS.velocity,
         )}
@@ -256,7 +270,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             <circle
               key={bin.timestamp}
               cx={x(bin.timestamp)}
-              cy={velocityY(bins, bin.peakVelocity, 228, 110)}
+              cy={velocityY(bins, bin.peakVelocity, 260, 110)}
               r="2.5"
               fill="#e6975588"
             />
@@ -267,20 +281,20 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             x1={x(hover)}
             x2={x(hover)}
             y1="20"
-            y2="338"
+            y2="370"
             className="timeline-cursor"
           />
         ) : null}
         <rect
           x={margin.left}
-          y="362"
+          y="394"
           width={inner}
           height="16"
           className="timeline-brush"
           opacity=".45"
         />
         <g ref={brushRef} />
-        <text x={margin.left} y="402" className="timeline-label">
+        <text x={margin.left} y="434" className="timeline-label">
           Drag the gold strip to zoom · {time(activeDomain[0])}–{time(activeDomain[1])}
         </text>
       </svg>
@@ -311,30 +325,64 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   );
 }
 
-function ChampionMarker({
+function EventGroup({
+  group,
+  x,
   version,
-  champion,
-  kind,
 }: {
+  group: TimelineEventGroup;
+  x: number;
   version: string;
-  champion: string;
-  kind: keyof typeof labels;
 }) {
+  const lane = eventLane(group.events[0]);
+  const offsets = groupedOffsets(group.events.length);
+  const label = group.events
+    .map((event) => `${labels[event.kind]} (${event.side})`)
+    .join(", ");
+  return (
+    <g transform={`translate(${x},${laneY[lane]})`} className="timeline-event">
+      {group.events.map((event, index) => (
+        <g
+          key={`${event.timestamp}-${index}`}
+          transform={`translate(${offsets[index]},0)`}
+        >
+          <circle r="11" fill={COLORS[event.side]} />
+          {event.championName ? (
+            <ChampionMarker version={version} champion={event.championName} />
+          ) : null}
+          <text textAnchor="middle" x="10" y="9" className="timeline-event-emoji">
+            {eventEmoji[event.kind]}
+          </text>
+        </g>
+      ))}
+      {group.events.length > 1 ? (
+        <g transform={`translate(${offsets.at(-1)! + 12},-12)`}>
+          <circle r="8" className="timeline-event-count-background" />
+          <text textAnchor="middle" dy="4" className="timeline-event-count">
+            {group.events.length}
+          </text>
+        </g>
+      ) : null}
+      <title>{`${time(group.timestamp)} · ${label}`}</title>
+    </g>
+  );
+}
+
+function groupedOffsets(count: number) {
+  return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * 9);
+}
+
+function ChampionMarker({ version, champion }: { version: string; champion: string }) {
   const urls = championAssetUrls(version, champion);
   const [src, setSrc] = useState(urls.primary ?? urls.fallback);
-  if (!src)
-    return (
-      <text textAnchor="middle" dy="4">
-        {kind[0].toUpperCase()}
-      </text>
-    );
+  if (!src) return null;
   return (
     <image
       href={src}
-      width="14"
-      height="14"
-      x="-7"
-      y="-7"
+      width="20"
+      height="20"
+      x="-10"
+      y="-10"
       onError={() => setSrc(nextChampionAssetUrl(urls, src))}
     />
   );
