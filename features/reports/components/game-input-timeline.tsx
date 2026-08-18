@@ -61,6 +61,10 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(760);
   const [enabled, setEnabled] = useState(new Set(Object.keys(labels)));
+  const [enabledMetrics, setEnabledMetrics] = useState(
+    new Set(["cs", "gold", "apm", "peakApm", "velocity", "peakVelocity"]),
+  );
+  const [activeMetric, setActiveMetric] = useState("cs");
   const [domain, setDomain] = useState<[number, number] | null>(null);
   const brushRef = useRef<SVGGElement>(null);
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   const outer = Math.round(width),
     margin = { left: 54, right: 54, top: 20, bottom: 38 },
     inner = outer - margin.left - margin.right,
-    height = 540;
+    height = 840;
   const full: [number, number] = [
     0,
     Math.max(...model.bins.map((bin) => bin.timestamp), 30_000),
@@ -90,8 +94,8 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     if (!brushRef.current) return;
     const brush = brushX<unknown>()
       .extent([
-        [margin.left, 460],
-        [margin.left + inner, 476],
+        [margin.left, 760],
+        [margin.left + inner, 776],
       ])
       .on("end", ({ selection }: { selection: [number, number] | null }) => {
         if (!selection) return setDomain(null);
@@ -128,12 +132,65 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     cursorX === null
       ? null
       : Math.max(margin.left + 23, Math.min(margin.left + inner - 23, cursorX));
+  const metrics = [
+    {
+      id: "cs",
+      label: "CS/min",
+      color: COLORS.cs,
+      values: bins.map((bin) => bin.csPerMinute),
+      group: "Economy",
+    },
+    {
+      id: "gold",
+      label: "Gold/min",
+      color: COLORS.gold,
+      values: bins.map((bin) => bin.goldPerMinute),
+      group: "Economy",
+    },
+    {
+      id: "apm",
+      label: "APM",
+      color: COLORS.left,
+      values: bins.map(actionsPerMinute),
+      group: "Input",
+    },
+    {
+      id: "peakApm",
+      label: "Peak APM",
+      color: COLORS.left,
+      values: bins.map((bin) => bin.peakApm),
+      group: "Input",
+      dashed: true,
+    },
+    {
+      id: "velocity",
+      label: "Velocity px/s",
+      color: COLORS.velocity,
+      values: bins.map((bin) => bin.meanVelocity),
+      group: "Input",
+    },
+    {
+      id: "peakVelocity",
+      label: "Peak velocity",
+      color: COLORS.velocity,
+      values: bins.map((bin) => bin.peakVelocity),
+      group: "Input",
+      dashed: true,
+    },
+  ];
+  const active = metrics.find((metric) => metric.id === activeMetric) ?? metrics[0];
+  const selectedIndex = selected
+    ? bins.findIndex((bin) => bin.timestamp === selected.timestamp)
+    : -1;
+  const activeValue = selectedIndex >= 0 ? active.values[selectedIndex] : null;
+  const activeY = valueY(active.values, activeValue, 136, 600);
   const linePath = (
     values: (number | null)[],
     top: number,
     rowHeight: number,
     color: string,
     dashed = false,
+    id = "",
   ) => {
     const finite = values.filter(valid);
     if (!finite.length) return null;
@@ -150,6 +207,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         }
         stroke={color}
         className={dashed ? "unified-line dashed" : "unified-line"}
+        onPointerEnter={() => setActiveMetric(id)}
       />
     );
   };
@@ -161,6 +219,12 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     setEnabled((current) => {
       const next = new Set(current);
       next.has(kind) ? next.delete(kind) : next.add(kind);
+      return next;
+    });
+  const toggleMetric = (id: string) =>
+    setEnabledMetrics((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   return (
@@ -179,6 +243,25 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             Clear zoom
           </button>
         ) : null}
+      </div>
+      <div className="timeline-metric-filters" aria-label="Metric visibility filters">
+        {(["Economy", "Input"] as const).map((group) => (
+          <div key={group}>
+            <b>{group}</b>
+            {metrics
+              .filter((metric) => metric.group === group)
+              .map((metric) => (
+                <button
+                  key={metric.id}
+                  type="button"
+                  aria-pressed={enabledMetrics.has(metric.id)}
+                  onClick={() => toggleMetric(metric.id)}
+                >
+                  {metric.label}
+                </button>
+              ))}
+          </div>
+        ))}
       </div>
       <div className="timeline-legend" aria-label="Event filters">
         {Object.entries(labels).map(([kind, label]) => (
@@ -217,7 +300,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             x1={x(tick)}
             x2={x(tick)}
             y1="20"
-            y2="436"
+            y2="736"
             className={
               tick % majorGridIntervalMs === 0
                 ? "timeline-time-grid major"
@@ -261,92 +344,27 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           />
         ))}
         <text x={margin.left} y="128" className="timeline-label">
-          CS/MIN · GOLD/MIN
+          NORMALIZED ECONOMY · INPUT
         </text>
-        <DualYAxis
-          left={{
-            label: "CS/min",
-            color: COLORS.cs,
-            values: bins.map((bin) => bin.csPerMinute),
-            activeValue: selected?.csPerMinute ?? null,
-          }}
-          right={{
-            label: "Gold/min",
-            color: COLORS.gold,
-            values: bins.map((bin) => bin.goldPerMinute),
-            activeValue: selected?.goldPerMinute ?? null,
-          }}
-          leftX={margin.left}
-          rightX={margin.left + inner}
+        <AxisSide
+          series={{ ...active, activeValue }}
+          x={margin.left}
           top={136}
-          height={120}
+          height={600}
+          side="left"
         />
-        {linePath(
-          bins.map((bin) => bin.csPerMinute),
-          136,
-          120,
-          COLORS.cs,
-        )}
-        {linePath(
-          bins.map((bin) => bin.goldPerMinute),
-          136,
-          120,
-          COLORS.gold,
-        )}
-        <text x={margin.left} y="278" className="timeline-label">
-          INPUT APM · MOUSE VELOCITY
-        </text>
-        <DualYAxis
-          left={{
-            label: "APM",
-            color: COLORS.left,
-            values: bins.map(actionsPerMinute),
-            activeValue: selected ? actionsPerMinute(selected) : null,
-          }}
-          right={{
-            label: "Velocity px/s",
-            color: COLORS.velocity,
-            values: bins.map((bin) => bin.meanVelocity),
-            activeValue: selected?.meanVelocity ?? null,
-          }}
-          leftX={margin.left}
-          rightX={margin.left + inner}
-          top={286}
-          height={150}
-        />
-        {linePath(
-          bins.map(actionsPerMinute),
-          286,
-          150,
-          COLORS.left,
-        )}
-        {linePath(
-          bins.map((bin) => bin.peakApm),
-          286,
-          150,
-          COLORS.left,
-          true,
-        )}
-        {linePath(
-          bins.map((bin) => bin.meanVelocity),
-          286,
-          150,
-          COLORS.velocity,
-        )}
-        {linePath(
-          bins.map((bin) => bin.peakVelocity),
-          286,
-          150,
-          COLORS.velocity,
-          true,
-        )}
+        {metrics
+          .filter((metric) => enabledMetrics.has(metric.id))
+          .map((metric) =>
+            linePath(metric.values, 136, 600, metric.color, metric.dashed, metric.id),
+          )}
         {cursorX !== null && cursorLabelX !== null ? (
           <>
             <line
               x1={cursorX}
               x2={cursorX}
               y1="20"
-              y2="436"
+              y2="736"
               className="timeline-cursor"
             />
             <g
@@ -358,20 +376,21 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
                 {time(cursorTimestamp)}
               </text>
             </g>
-            {selected ? (
-              <ChartHoverValues
-                bin={selected}
-                bins={bins}
-                x={cursorX}
-                leftX={margin.left}
-                rightX={margin.left + inner}
+            {activeY === null ? null : (
+              <line
+                x1={margin.left}
+                x2={margin.left + inner}
+                y1={activeY}
+                y2={activeY}
+                stroke={active.color}
+                className="timeline-hover-projection"
               />
-            ) : null}
+            )}
           </>
         ) : null}
         <rect
           x={margin.left}
-          y="460"
+          y="760"
           width={inner}
           height="16"
           className="timeline-brush"
@@ -381,31 +400,51 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         {timeTicks
           .filter((tick) => tick % majorGridIntervalMs === 0)
           .map((tick) => (
-          <text
-            key={tick}
-            x={x(tick)}
-            y="454"
-            textAnchor="middle"
-            className="timeline-tick-label"
-          >
-            {time(tick)}
-          </text>
+            <text
+              key={tick}
+              x={x(tick)}
+              y="754"
+              textAnchor="middle"
+              className="timeline-tick-label"
+            >
+              {time(tick)}
+            </text>
           ))}
-        <text x={margin.left} y="500" className="timeline-axis-title">
+        <text x={margin.left} y="800" className="timeline-axis-title">
           GAME TIME (MM:SS)
         </text>
         <text
           x={margin.left + inner}
-          y="500"
+          y="800"
           textAnchor="end"
           className="timeline-axis-title"
         >
           {time(activeDomain[0])}–{time(activeDomain[1])}
         </text>
-        <text x={margin.left} y="518" className="timeline-label">
+        <text x={margin.left} y="818" className="timeline-label">
           Drag the gold strip to zoom
         </text>
       </svg>
+      {selected ? (
+        <div className="timeline-value-bars">
+          {metrics
+            .filter((metric) => enabledMetrics.has(metric.id))
+            .map((metric) => {
+              const value = selectedIndex >= 0 ? metric.values[selectedIndex] : null;
+              const percent =
+                value === null ? 0 : (value / seriesMax(metric.values)) * 100;
+              return (
+                <div key={metric.id}>
+                  <span>{metric.label}</span>
+                  <i>
+                    <b style={{ width: `${percent}%`, background: metric.color }} />
+                  </i>
+                  <strong>{format(value)}</strong>
+                </div>
+              );
+            })}
+        </div>
+      ) : null}
       {selected ? (
         <div className="timeline-tooltip" role="status">
           <b>{time(cursorTimestamp ?? selected.timestamp)}</b>
@@ -472,25 +511,25 @@ function EventGroup({
             </g>
           ))
         : group.events.map((event, index) => (
-        <g
-          key={`${event.timestamp}-${index}`}
-          transform={`translate(${offsets[index]},0)`}
-        >
-          <circle r="11" fill={COLORS[event.side]} />
-          {event.championName ? (
-            <ChampionMarker version={version} champion={event.championName} />
-          ) : null}
-          <text
-            x="0"
-            y="0"
-            textAnchor="middle"
-            dominantBaseline="central"
-            className="timeline-event-emoji"
-          >
-            {eventEmoji[event.kind]}
-          </text>
-        </g>
-      ))}
+            <g
+              key={`${event.timestamp}-${index}`}
+              transform={`translate(${offsets[index]},0)`}
+            >
+              <circle r="11" fill={COLORS[event.side]} />
+              {event.championName ? (
+                <ChampionMarker version={version} champion={event.championName} />
+              ) : null}
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="timeline-event-emoji"
+              >
+                {eventEmoji[event.kind]}
+              </text>
+            </g>
+          ))}
       <title>{`${time(group.timestamp)} · ${label}`}</title>
     </g>
   );

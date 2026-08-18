@@ -57,6 +57,45 @@ section {
   gap: 6px;
   margin: 12px 0;
 }
+.timeline-metric-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0;
+}
+.timeline-metric-filters div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.timeline-metric-filters button {
+  margin: 0;
+  padding: 4px 6px;
+}
+.timeline-value-bars {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.timeline-value-bars div {
+  display: grid;
+  gap: 4px;
+  min-width: 95px;
+  font-size: 11px;
+}
+.timeline-value-bars i {
+  display: block;
+  height: 8px;
+  background: #0b111a;
+}
+.timeline-value-bars b {
+  display: block;
+  height: 100%;
+}
+.timeline-hover-projection {
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+}
 .timeline-legend button {
   display: inline-flex;
   align-items: center;
