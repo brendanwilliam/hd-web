@@ -35,6 +35,11 @@ export type TimelineEventGroup = {
   timestamp: number;
   events: TimelineEvent[];
 };
+export type TimelineEventUnit = {
+  kind: TimelineEvent["kind"];
+  side: TimelineEvent["side"];
+  count: number;
+};
 
 const eventGroupWindowMs = 6_000;
 
@@ -63,6 +68,19 @@ export function groupTimelineEvents(events: TimelineEvent[]): TimelineEventGroup
   return [...groupsByLane.values()]
     .flat()
     .sort((first, second) => first.timestamp - second.timestamp);
+}
+
+export function summarizeTimelineEventGroup(
+  events: TimelineEvent[],
+): TimelineEventUnit[] {
+  const units = new Map<string, TimelineEventUnit>();
+  for (const event of events) {
+    const key = `${event.side}:${event.kind}`;
+    const current = units.get(key);
+    if (current) current.count += 1;
+    else units.set(key, { kind: event.kind, side: event.side, count: 1 });
+  }
+  return [...units.values()];
 }
 
 export function createReportTimelineView(report: {

@@ -95,6 +95,10 @@ section {
 .timeline-grid {
   stroke: #3b4c61;
 }
+.timeline-event-row {
+  stroke: #3b4c61;
+  stroke-opacity: 0.65;
+}
 .timeline-time-grid {
   stroke: #3b4c61;
   stroke-dasharray: 2 5;
@@ -159,6 +163,9 @@ section {
 .timeline-event-emoji {
   font-size: 13px;
   dominant-baseline: central;
+}
+.timeline-event-summary {
+  font-size: 12px;
 }
 .timeline-event-count-background {
   fill: #e6edf5;

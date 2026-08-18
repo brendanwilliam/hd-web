@@ -3,6 +3,7 @@ import { normalizedReportTimeline } from "@/features/reports/domain/reconciliati
 import {
   createReportTimelineView,
   groupTimelineEvents,
+  summarizeTimelineEventGroup,
 } from "@/features/reports/domain/timeline-view";
 import { championAssetUrls } from "@/features/reports/domain/data-dragon";
 
@@ -158,6 +159,19 @@ describe("report timeline normalization", () => {
       ["takedown", "death"],
       ["tower", "inhibitor"],
       ["monster"],
+    ]);
+  });
+
+  it("summarizes overlapping events by their event type", () => {
+    expect(
+      summarizeTimelineEventGroup([
+        { timestamp: 1, kind: "tower", side: "ally", championName: "Ahri" },
+        { timestamp: 2, kind: "tower", side: "ally", championName: "Ahri" },
+        { timestamp: 3, kind: "inhibitor", side: "ally", championName: "Ahri" },
+      ]),
+    ).toEqual([
+      { kind: "tower", side: "ally", count: 2 },
+      { kind: "inhibitor", side: "ally", count: 1 },
     ]);
   });
 

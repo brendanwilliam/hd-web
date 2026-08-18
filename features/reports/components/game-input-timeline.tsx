@@ -10,6 +10,7 @@ import {
 import {
   eventLane,
   groupTimelineEvents,
+  summarizeTimelineEventGroup,
   type ReportTimelineView,
   type TimelineEventGroup,
 } from "@/features/reports/domain/timeline-view";
@@ -72,7 +73,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   const outer = Math.round(width),
     margin = { left: 54, right: 54, top: 20, bottom: 38 },
     inner = outer - margin.left - margin.right,
-    height = 474;
+    height = 540;
   const full: [number, number] = [
     0,
     Math.max(...model.bins.map((bin) => bin.timestamp), 30_000),
@@ -89,8 +90,8 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     if (!brushRef.current) return;
     const brush = brushX<unknown>()
       .extent([
-        [margin.left, 394],
-        [margin.left + inner, 410],
+        [margin.left, 460],
+        [margin.left + inner, 476],
       ])
       .on("end", ({ selection }: { selection: [number, number] | null }) => {
         if (!selection) return setDomain(null);
@@ -121,7 +122,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
               : near,
           model.bins[0],
         );
-  const cursorTimestamp = selected?.timestamp ?? hover;
+  const cursorTimestamp = hover;
   const cursorX = cursorTimestamp === null ? null : x(cursorTimestamp);
   const cursorLabelX =
     cursorX === null
@@ -154,7 +155,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
   };
   const onMove = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    setHover(x.invert(((event.clientX - rect.left) * outer) / rect.width));
+    setHover(snapToSecond(x.invert(((event.clientX - rect.left) * outer) / rect.width)));
   };
   const toggle = (kind: string) =>
     setEnabled((current) => {
@@ -216,7 +217,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             x1={x(tick)}
             x2={x(tick)}
             y1="20"
-            y2="370"
+            y2="436"
             className={
               tick % majorGridIntervalMs === 0
                 ? "timeline-time-grid major"
@@ -231,6 +232,16 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           y2="105"
           className="timeline-grid"
         />
+        {Object.keys(laneLabels).map((lane) => (
+          <line
+            key={lane}
+            x1={margin.left}
+            x2={margin.left + inner}
+            y1={laneY[lane as keyof typeof laneY]}
+            y2={laneY[lane as keyof typeof laneY]}
+            className="timeline-event-row"
+          />
+        ))}
         {Object.entries(laneLabels).map(([lane, label]) => (
           <text
             key={lane}
@@ -268,21 +279,21 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           leftX={margin.left}
           rightX={margin.left + inner}
           top={136}
-          height={94}
+          height={120}
         />
         {linePath(
           bins.map((bin) => bin.csPerMinute),
           136,
-          94,
+          120,
           COLORS.cs,
         )}
         {linePath(
           bins.map((bin) => bin.goldPerMinute),
           136,
-          94,
+          120,
           COLORS.gold,
         )}
-        <text x={margin.left} y="252" className="timeline-label">
+        <text x={margin.left} y="278" className="timeline-label">
           INPUT APM · MOUSE VELOCITY
         </text>
         <DualYAxis
@@ -300,32 +311,32 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           }}
           leftX={margin.left}
           rightX={margin.left + inner}
-          top={260}
-          height={110}
+          top={286}
+          height={150}
         />
         {linePath(
           bins.map(actionsPerMinute),
-          260,
-          110,
+          286,
+          150,
           COLORS.left,
         )}
         {linePath(
           bins.map((bin) => bin.peakApm),
-          260,
-          110,
+          286,
+          150,
           COLORS.left,
           true,
         )}
         {linePath(
           bins.map((bin) => bin.meanVelocity),
-          260,
-          110,
+          286,
+          150,
           COLORS.velocity,
         )}
         {linePath(
           bins.map((bin) => bin.peakVelocity),
-          260,
-          110,
+          286,
+          150,
           COLORS.velocity,
           true,
         )}
@@ -335,7 +346,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
               x1={cursorX}
               x2={cursorX}
               y1="20"
-              y2="370"
+              y2="436"
               className="timeline-cursor"
             />
             <g
@@ -360,7 +371,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         ) : null}
         <rect
           x={margin.left}
-          y="394"
+          y="460"
           width={inner}
           height="16"
           className="timeline-brush"
@@ -373,31 +384,31 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           <text
             key={tick}
             x={x(tick)}
-            y="388"
+            y="454"
             textAnchor="middle"
             className="timeline-tick-label"
           >
             {time(tick)}
           </text>
           ))}
-        <text x={margin.left} y="434" className="timeline-axis-title">
+        <text x={margin.left} y="500" className="timeline-axis-title">
           GAME TIME (MM:SS)
         </text>
         <text
           x={margin.left + inner}
-          y="434"
+          y="500"
           textAnchor="end"
           className="timeline-axis-title"
         >
           {time(activeDomain[0])}–{time(activeDomain[1])}
         </text>
-        <text x={margin.left} y="452" className="timeline-label">
+        <text x={margin.left} y="518" className="timeline-label">
           Drag the gold strip to zoom
         </text>
       </svg>
       {selected ? (
         <div className="timeline-tooltip" role="status">
-          <b>{time(selected.timestamp)}</b>
+          <b>{time(cursorTimestamp ?? selected.timestamp)}</b>
           <span>
             CS/min {format(selected.csPerMinute)} · Gold/min{" "}
             {format(selected.goldPerMinute)}
@@ -432,13 +443,35 @@ function EventGroup({
   version: string;
 }) {
   const lane = eventLane(group.events[0]);
-  const offsets = groupedOffsets(group.events.length);
+  const units = summarizeTimelineEventGroup(group.events);
+  const merged = group.events.length > 1;
+  const offsets = groupedOffsets(
+    merged ? units.length : group.events.length,
+    merged ? 32 : 9,
+  );
   const label = group.events
     .map((event) => `${labels[event.kind]} (${event.side})`)
     .join(", ");
   return (
     <g transform={`translate(${x},${laneY[lane]})`} className="timeline-event">
-      {group.events.map((event, index) => (
+      {merged
+        ? units.map((unit, index) => (
+            <g
+              key={`${unit.side}-${unit.kind}`}
+              transform={`translate(${offsets[index]},0)`}
+            >
+              <ellipse rx="14" ry="11" fill={COLORS[unit.side]} />
+              <text
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="timeline-event-summary"
+              >
+                {unit.count}
+                {eventEmoji[unit.kind]}
+              </text>
+            </g>
+          ))
+        : group.events.map((event, index) => (
         <g
           key={`${event.timestamp}-${index}`}
           transform={`translate(${offsets[index]},0)`}
@@ -458,21 +491,17 @@ function EventGroup({
           </text>
         </g>
       ))}
-      {group.events.length > 1 ? (
-        <g transform={`translate(${offsets.at(-1)! + 12},-12)`}>
-          <circle r="8" className="timeline-event-count-background" />
-          <text textAnchor="middle" dy="4" className="timeline-event-count">
-            {group.events.length}
-          </text>
-        </g>
-      ) : null}
       <title>{`${time(group.timestamp)} · ${label}`}</title>
     </g>
   );
 }
 
-function groupedOffsets(count: number) {
-  return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * 9);
+function groupedOffsets(count: number, gap: number) {
+  return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * gap);
+}
+
+function snapToSecond(timestamp: number) {
+  return Math.round(timestamp / 1_000) * 1_000;
 }
 
 function minuteTicks(domain: [number, number]) {
@@ -516,22 +545,22 @@ function ChartHoverValues({
     bins.map((item) => item.csPerMinute),
     bin.csPerMinute,
     136,
-    94,
+    120,
   );
   const goldY = valueY(
     bins.map((item) => item.goldPerMinute),
     bin.goldPerMinute,
     136,
-    94,
+    120,
   );
   const velocityY = valueY(
     bins.map((item) => item.meanVelocity),
     bin.meanVelocity,
-    260,
-    110,
+    286,
+    150,
   );
   const apm = actionsPerMinute(bin);
-  const apmY = valueY(bins.map(actionsPerMinute), apm, 260, 110);
+  const apmY = valueY(bins.map(actionsPerMinute), apm, 286, 150);
   return (
     <g className="timeline-hover-values">
       {csY === null ? null : (
