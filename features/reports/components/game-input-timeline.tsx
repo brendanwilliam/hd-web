@@ -121,6 +121,13 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
               : near,
           model.bins[0],
         );
+  const cursorTimestamp = selected?.timestamp ?? hover;
+  const cursorX = cursorTimestamp === null ? null : x(cursorTimestamp);
+  const cursorLabelX =
+    cursorX === null
+      ? null
+      : Math.max(margin.left + 23, Math.min(margin.left + inner - 23, cursorX));
+  const valueLabelOnLeft = cursorX !== null && cursorX > margin.left + inner - 110;
   const linePath = (
     values: (number | null)[],
     top: number,
@@ -241,6 +248,14 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         <text x={margin.left} y="128" className="timeline-label">
           CS/MIN · GOLD/MIN
         </text>
+        <text
+          x="15"
+          y="183"
+          transform="rotate(-90 15 183)"
+          className="timeline-axis-label"
+        >
+          CS/min · Gold/min
+        </text>
         <rect
           x={margin.left}
           y="136"
@@ -262,6 +277,14 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         )}
         <text x={margin.left} y="252" className="timeline-label">
           INPUT APM · MOUSE VELOCITY
+        </text>
+        <text
+          x="15"
+          y="315"
+          transform="rotate(-90 15 315)"
+          className="timeline-axis-label"
+        >
+          APM · velocity (px/s)
         </text>
         <rect
           x={margin.left}
@@ -288,14 +311,33 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
             />
           ) : null,
         )}
-        {hover !== null ? (
-          <line
-            x1={x(hover)}
-            x2={x(hover)}
-            y1="20"
-            y2="370"
-            className="timeline-cursor"
-          />
+        {cursorX !== null && cursorLabelX !== null ? (
+          <>
+            <line
+              x1={cursorX}
+              x2={cursorX}
+              y1="20"
+              y2="370"
+              className="timeline-cursor"
+            />
+            <g
+              transform={`translate(${cursorLabelX},20)`}
+              className="timeline-cursor-time"
+            >
+              <rect x="-23" y="-12" width="46" height="17" rx="3" />
+              <text textAnchor="middle" y="0">
+                {time(cursorTimestamp)}
+              </text>
+            </g>
+            {selected ? (
+              <ChartHoverValues
+                bin={selected}
+                bins={bins}
+                x={cursorX}
+                labelOnLeft={valueLabelOnLeft}
+              />
+            ) : null}
+          </>
         ) : null}
         <rect
           x={margin.left}
@@ -425,6 +467,62 @@ function ChampionMarker({ version, champion }: { version: string; champion: stri
   );
 }
 
+function ChartHoverValues({
+  bin,
+  bins,
+  x,
+  labelOnLeft,
+}: {
+  bin: ReportTimelineView["bins"][number];
+  bins: ReportTimelineView["bins"];
+  x: number;
+  labelOnLeft: boolean;
+}) {
+  const csY = valueY(
+    bins.map((item) => item.csPerMinute),
+    bin.csPerMinute,
+    136,
+    94,
+  );
+  const goldY = valueY(
+    bins.map((item) => item.goldPerMinute),
+    bin.goldPerMinute,
+    136,
+    94,
+  );
+  const velocityY = valueY(
+    bins.map((item) => item.meanVelocity),
+    bin.meanVelocity,
+    260,
+    110,
+  );
+  const apm =
+    (bin.leftClicks ?? 0) + (bin.rightClicks ?? 0) + (bin.gameplayKeys ?? 0);
+  const labelX = x + (labelOnLeft ? -7 : 7);
+  const labelAnchor = labelOnLeft ? "end" : "start";
+  return (
+    <g className="timeline-hover-values">
+      {csY === null ? null : <circle cx={x} cy={csY} r="3" fill={COLORS.cs} />}
+      {goldY === null ? null : <circle cx={x} cy={goldY} r="3" fill={COLORS.gold} />}
+      {velocityY === null ? null : (
+        <circle cx={x} cy={velocityY} r="3" fill={COLORS.velocity} />
+      )}
+      <text x={labelX} y="151" textAnchor={labelAnchor} fill={COLORS.cs}>
+        CS {format(bin.csPerMinute)}/min
+      </text>
+      <text x={labelX} y="164" textAnchor={labelAnchor} fill={COLORS.gold}>
+        Gold {format(bin.goldPerMinute)}/min
+      </text>
+      <text x={labelX} y="276" textAnchor={labelAnchor} fill={COLORS.left}>
+        {bin.leftClicks === null ? "APM unavailable" : `APM ${apm.toFixed(0)}`}
+      </text>
+      <text x={labelX} y="289" textAnchor={labelAnchor} fill={COLORS.velocity}>
+        Velocity {format(bin.meanVelocity)} px/s
+      </text>
+    </g>
+  );
+}
+
 function renderBars(
   bins: ReportTimelineView["bins"],
   x: ScaleLinear<number, number>,
@@ -467,6 +565,16 @@ function velocityY(
   height: number,
 ) {
   const max = Math.max(1, ...bins.map((bin) => bin.peakVelocity ?? 0));
+  return top + height - (value / max) * height;
+}
+function valueY(
+  values: (number | null)[],
+  value: number | null,
+  top: number,
+  height: number,
+) {
+  if (!valid(value)) return null;
+  const max = Math.max(1, ...values.filter(valid));
   return top + height - (value / max) * height;
 }
 function format(value: number | null) {

@@ -104,6 +104,11 @@ section {
   fill: #71849a;
   font-size: 10px;
 }
+.timeline-axis-label {
+  fill: #71849a;
+  font-size: 9px;
+  font-weight: 700;
+}
 .timeline-background {
   fill: #0b111a;
   stroke: #293443;
@@ -138,6 +143,18 @@ section {
 .timeline-cursor {
   stroke: #d9b45a;
   stroke-dasharray: 3 3;
+}
+.timeline-cursor-time rect {
+  fill: #09101a;
+  stroke: #d9b45a;
+}
+.timeline-cursor-time text,
+.timeline-hover-values text {
+  font-size: 10px;
+  font-weight: 700;
+}
+.timeline-cursor-time text {
+  fill: #e6edf5;
 }
 .timeline-brush {
   fill: #d9b45a;
