@@ -115,8 +115,13 @@ section {
   font-weight: 700;
 }
 .timeline-y-axis-line {
-  stroke: currentColor;
   stroke-opacity: 0.7;
+}
+.timeline-y-axis-tick {
+  stroke-width: 1.5;
+}
+.timeline-y-axis-tick.current {
+  stroke-width: 2;
 }
 .timeline-y-axis-unit {
   font-size: 9px;

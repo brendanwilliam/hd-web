@@ -611,6 +611,7 @@ function AxisSide({
   const activeY = valueY(series.values, series.activeValue, top, height);
   const labelX = x + (side === "left" ? -7 : 7);
   const anchor = side === "left" ? "end" : "start";
+  const guideX = x + (side === "left" ? 16 : -16);
   return (
     <g fill={series.color}>
       <line
@@ -621,12 +622,28 @@ function AxisSide({
         stroke={series.color}
         className="timeline-y-axis-line"
       />
-      <text x={labelX} y={top - 5} textAnchor={anchor} className="timeline-y-axis-unit">
+      <text x={labelX} y={top - 19} textAnchor={anchor} className="timeline-y-axis-unit">
         {series.label}
       </text>
+      <line
+        x1={x}
+        x2={guideX}
+        y1={top}
+        y2={top}
+        stroke={series.color}
+        className="timeline-y-axis-tick"
+      />
       <text x={labelX} y={top + 8} textAnchor={anchor} className="timeline-y-axis-range">
         {formatAxis(max)}
       </text>
+      <line
+        x1={x}
+        x2={guideX}
+        y1={top + height}
+        y2={top + height}
+        stroke={series.color}
+        className="timeline-y-axis-tick"
+      />
       <text
         x={labelX}
         y={top + height}
@@ -637,6 +654,22 @@ function AxisSide({
       </text>
       {activeY === null ? null : (
         <>
+          <rect
+            x={x - 4}
+            y={activeY}
+            width="8"
+            height={top + height - activeY}
+            fill={series.color}
+            opacity="0.32"
+          />
+          <line
+            x1={x}
+            x2={guideX}
+            y1={activeY}
+            y2={activeY}
+            stroke={series.color}
+            className="timeline-y-axis-tick current"
+          />
           <line
             x1={x}
             x2={x}
