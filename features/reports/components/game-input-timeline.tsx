@@ -47,6 +47,7 @@ const laneLabels = {
   structure: "STRUCTURES",
 };
 const laneY = { combat: 42, objective: 68, structure: 94 };
+const gridIntervalMs = 3 * 60_000;
 const time = (value: number) =>
   `${Math.floor(value / 60_000)}:${Math.floor((value / 1_000) % 60)
     .toString()
@@ -88,8 +89,8 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
     if (!brushRef.current) return;
     const brush = brushX<unknown>()
       .extent([
-        [margin.left, 362],
-        [margin.left + inner, 378],
+        [margin.left, 394],
+        [margin.left + inner, 410],
       ])
       .on("end", ({ selection }: { selection: [number, number] | null }) => {
         if (!selection) return setDomain(null);
@@ -109,6 +110,7 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
       enabled.has(event.kind),
   );
   const eventGroups = groupTimelineEvents(events);
+  const timeTicks = threeMinuteTicks(activeDomain);
   const selected =
     hover === null
       ? null
@@ -201,6 +203,16 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
         <text x={margin.left} y="14" className="timeline-label">
           GAME EVENTS
         </text>
+        {timeTicks.map((tick) => (
+          <line
+            key={tick}
+            x1={x(tick)}
+            x2={x(tick)}
+            y1="20"
+            y2="370"
+            className="timeline-time-grid"
+          />
+        ))}
         <line
           x1={margin.left}
           x2={margin.left + inner}
@@ -294,6 +306,17 @@ export default function GameInputTimeline({ model }: { model: ReportTimelineView
           opacity=".45"
         />
         <g ref={brushRef} />
+        {timeTicks.map((tick) => (
+          <text
+            key={tick}
+            x={x(tick)}
+            y="388"
+            textAnchor="middle"
+            className="timeline-tick-label"
+          >
+            {time(tick)}
+          </text>
+        ))}
         <text x={margin.left} y="434" className="timeline-label">
           Drag the gold strip to zoom · {time(activeDomain[0])}–{time(activeDomain[1])}
         </text>
@@ -350,7 +373,13 @@ function EventGroup({
           {event.championName ? (
             <ChampionMarker version={version} champion={event.championName} />
           ) : null}
-          <text textAnchor="middle" x="10" y="9" className="timeline-event-emoji">
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="timeline-event-emoji"
+          >
             {eventEmoji[event.kind]}
           </text>
         </g>
@@ -370,6 +399,14 @@ function EventGroup({
 
 function groupedOffsets(count: number) {
   return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * 9);
+}
+
+function threeMinuteTicks(domain: [number, number]) {
+  const first = Math.ceil(domain[0] / gridIntervalMs) * gridIntervalMs;
+  const count = Math.floor((domain[1] - first) / gridIntervalMs) + 1;
+  return count > 0
+    ? Array.from({ length: count }, (_, index) => first + index * gridIntervalMs)
+    : [];
 }
 
 function ChampionMarker({ version, champion }: { version: string; champion: string }) {

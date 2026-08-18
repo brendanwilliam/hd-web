@@ -95,6 +95,15 @@ section {
 .timeline-grid {
   stroke: #3b4c61;
 }
+.timeline-time-grid {
+  stroke: #3b4c61;
+  stroke-dasharray: 2 5;
+  stroke-opacity: 0.7;
+}
+.timeline-tick-label {
+  fill: #71849a;
+  font-size: 10px;
+}
 .timeline-background {
   fill: #0b111a;
   stroke: #293443;
@@ -114,6 +123,7 @@ section {
 }
 .timeline-event-emoji {
   font-size: 13px;
+  dominant-baseline: central;
 }
 .timeline-event-count-background {
   fill: #e6edf5;
